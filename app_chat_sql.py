@@ -861,24 +861,35 @@ STOPWORDS = {
     "com", "informacao", "informacoes", "informação", "informações", "relacionadas", "relacionada",
     "relacionados", "relacionado", "ao", "a", "o", "os", "as", "de", "do", "da", "dos", "das", "em",
     "no", "na", "nos", "nas", "para", "por", "que", "seja", "mostrar", "mostre", "ver", "quais", "qual",
-    "como", "fazer", "gerar", "cria", "criar", "me", "de", "um", "uns", "umas", "sobre", "relaciona"
+    "como", "fazer", "gerar", "cria", "criar", "me", "de", "um", "uns", "umas", "sobre", "relaciona",
+    "exibe", "exibir", "listar", "liste", "buscar", "busque"
 }
 
 SYNONYMS_MAP = {
-    "marketplace": ["market", "ifood", "delivery", "integrac", "ecom", "origem", "canal"],
+    "nfse": ["nota_fiscal_servico_eletronica", "nota_fiscal_servico", "nfse", "servico", "rps", "iss", "issqn", "tomador"],
+    "nfs-e": ["nota_fiscal_servico_eletronica", "nota_fiscal_servico", "nfse", "servico", "rps", "iss", "issqn", "tomador"],
+    "servico": ["nota_fiscal_servico_eletronica", "contrato_servico", "nfse", "rps", "issqn", "venda_ordem_servico"],
+    "serviço": ["nota_fiscal_servico_eletronica", "contrato_servico", "nfse", "rps", "issqn", "venda_ordem_servico"],
+    "marketplace": ["marketplace_pedido", "marketplace_vinculado", "marketplace_config", "produto_marketplace", "market", "ifood", "delivery", "integrac", "canal"],
     "mercado": ["marketplace", "market"],
-    "ifood": ["ifood", "delivery", "marketplace", "integrac"],
-    "delivery": ["delivery", "ifood", "entregador", "mesa", "restaurante"],
-    "fiscal": ["nfe", "nfce", "nota_fiscal", "icms", "pis", "cofins", "imposto", "tribut"],
-    "nfe": ["nota_fiscal_eletronica", "nfe", "chave_nfe", "recibo_situacao"],
-    "nfce": ["nfce", "nota_fiscal", "contingencia"],
-    "financeiro": ["financeiro", "parcela", "pagamento", "caixa", "banco", "contas_receber", "contas_pagar"],
-    "pagamento": ["forma_pagamento", "venda_cartao", "parcela", "financeiro"],
-    "estoque": ["estoque", "produto_estoque", "almoxarifado", "movimentacao_estoque"],
-    "produto": ["produto", "grade", "codigo_barra", "preco", "categoria", "grupo"],
+    "ifood": ["ifood", "delivery", "marketplace", "integrac", "restaurante_mesa"],
+    "delivery": ["delivery", "ifood", "entregador", "restaurante_mesa", "venda"],
+    "fiscal": ["nota_fiscal_eletronica", "nota_fiscal_servico_eletronica", "nfe", "nfce", "nfse", "icms", "pis", "cofins", "imposto", "tribut"],
+    "nfe": ["nota_fiscal_eletronica", "nota_fiscal_eletronica_item", "nfe", "chave_nfe", "recibo_situacao"],
+    "nfce": ["venda_nfce", "nota_fiscal_eletronica", "contingencia"],
+    "cte": ["cte", "cte_documento_nfe", "cte_tabela_frete", "transporte"],
+    "mdfe": ["manifesto_documento_eletronico", "mdfe"],
+    "os": ["venda_ordem_servico", "atendimento", "assistencia_padrao_laudo", "ordem_servico"],
+    "ordem_servico": ["venda_ordem_servico", "atendimento", "assistencia_padrao_laudo", "ordem_servico"],
+    "financeiro": ["financeiro", "financeiro_parcela", "caixa", "banco", "contas_receber", "contas_pagar", "forma_pagamento"],
+    "pagamento": ["forma_pagamento", "venda_cartao", "financeiro_parcela", "financeiro"],
+    "estoque": ["produto_empresa_grade", "produto_estoque_ruptura", "movimentacao_estoque", "almoxarifado"],
+    "produto": ["produto", "produto_empresa", "produto_empresa_grade", "tabela_preco_produto", "grupo"],
     "cliente": ["cliente", "pessoa", "endereco", "contato"],
-    "usuario": ["usuario", "funcionario", "permissao", "acesso", "log"],
-    "venda": ["venda", "venda_item", "pedido", "faturamento"]
+    "usuario": ["usuario", "funcionario", "permissao", "acesso", "permission_role"],
+    "venda": ["venda", "venda_item", "venda_cartao", "faturamento", "pedido"],
+    "restaurante": ["restaurante_mesa", "restaurante_mesa_item", "restaurante_mesa_configuracao"],
+    "petshop": ["petshop_ordem_servico", "petshop_atendimento_servico", "petshop_configuracao"]
 }
 
 def extract_semantic_keywords(prompt_text):
@@ -1048,7 +1059,44 @@ COMMIT;"""
             "explicacao": "Na aba **Validação**, confira os dados da venda. Na aba **Execução**, aplique a atualização de status com confirmação explícita."
         }
 
-    # 4. MARKETPLACE / INTEGRAÇÕES / CANAIS / IFOOD
+    # 4. NFSE / NOTA FISCAL DE SERVIÇO / ISSQN / RPS
+    if any(k in p for k in ["nfse", "nfs-e", "servico", "serviço", "rps", "issqn", "tomador", "iss"]):
+        sql = """-- Consulta Analítica Completa de NFSe (Nota Fiscal de Serviços Eletrônica)
+SELECT 
+    nfse.id AS nfse_id,
+    nfse.numero_rps,
+    nfse.status_rps,
+    nfse.data_emissao,
+    nfse.total_valor_servico,
+    nfse.aliquota_iss,
+    nfse.iss_retido,
+    tomador.tomador_razao_social,
+    tomador.tomador_cnpj_cpf,
+    item.discriminacao_servico,
+    item.valor_servico
+FROM nota_fiscal_servico_eletronica nfse
+LEFT JOIN nota_fiscal_servico_eletronica_tomador tomador ON tomador.nfse_id = nfse.id
+LEFT JOIN nota_fiscal_servico_eletronica_item item ON item.nfse_id = nfse.id
+WHERE nfse.deleted_at IS NULL 
+  AND nfse.empresa_id = 1
+ORDER BY nfse.id DESC
+LIMIT 50;"""
+        return {
+            "tipo_operacao": "SELECT",
+            "sql_validacao": "",
+            "sql_final": sql,
+            "tabelas_utilizadas": [
+                "nota_fiscal_servico_eletronica",
+                "nota_fiscal_servico_eletronica_item",
+                "nota_fiscal_servico_eletronica_tomador",
+                "nfse_aliquota_padrao",
+                "nfse_codigo_servico_item",
+                "contrato_servico"
+            ],
+            "explicacao": "Identificamos todas as tabelas oficiais do módulo de NFSe no schema: `nota_fiscal_servico_eletronica` (cabeçalho/RPS), `nota_fiscal_servico_eletronica_item` (itens e alíquotas de ISS), `nota_fiscal_servico_eletronica_tomador` (dados do tomador), `nfse_aliquota_padrao`, `nfse_codigo_servico_item`, `nfse_serie` e vínculos com `contrato_servico`."
+        }
+
+    # 5. MARKETPLACE / INTEGRAÇÕES / CANAIS / IFOOD
     if any("market" in kw or "ifood" in kw or "delivery" in kw or "canal" in kw or "integrac" in kw or "ecom" in kw for kw in keywords):
         sql = """-- Consulta Analítica Completa de Integração com Marketplaces
 SELECT 
