@@ -905,20 +905,62 @@ def search_tables_by_topic(keywords):
             matched_cols = [c for c in col_names if kw in c]
             score += len(matched_cols) * 4
 
-        if score > 0:
-            scores[t_name] = (score, t_data)
-
-    return sorted(scores.items(), key=lambda x: x[1][0], reverse=True)
-
-def generate_structure_response(prompt_text):
-    """Motor especialista local com busca semântica em 459 tabelas e 6.600 campos."""
+      def generate_structure_response(prompt_text):
+    """Motor especialista local com inteligência de negócio e busca semântica em 459 tabelas."""
     p = prompt_text.lower()
     keywords = extract_semantic_keywords(prompt_text)
     
     is_delete = any(k in p for k in ["delet", "exclu", "apag", "remov", "drop", "limp"])
-    is_update = any(k in p for k in ["updat", "atualiz", "alter", "modific", "cancel", "inativ", "bloque", "ajust", "troc", "mud"])
+    is_update = any(k in p for k in ["updat", "atualiz", "alter", "modific", "cancel", "inativ", "bloque", "ajust", "troc", "mud", "aument", "diminu", "baix"])
 
-    # 1. DELETE / EXCLUSÃO DE VENDAS
+    # 1. ALTERAR PREÇO OU ESTOQUE DE PRODUTO (2 ETAPAS)
+    if is_update and any(k in p for k in ["produt", "preco", "preço", "estoqu", "custo", "grade", "valor"]):
+        sql_val = """-- 1. Consulta de Validação (Conferência do Produto, Preço e Estoque Atual)
+SELECT 
+    p.id AS produto_id,
+    p.nome AS produto_nome,
+    p.referencia,
+    peg.id AS grade_id,
+    peg.codigo_barra,
+    peg.descricao AS variacao_grade,
+    peg.preco_venda AS preco_atual,
+    peg.estoque AS estoque_atual,
+    peg.updated_at AS ultima_atualizacao
+FROM produto p
+INNER JOIN produto_empresa pe ON pe.produto_id = p.id
+INNER JOIN produto_empresa_grade peg ON peg.produto_empresa_id = pe.id
+WHERE (p.id = 10 OR p.codigo_barras = '7891234567890' OR p.nome LIKE '%NOME_PRODUTO%')
+  AND pe.empresa_id = 1
+  AND p.deleted_at IS NULL;"""
+
+        sql_final = """-- 2. Atualização Segura de Preço e/ou Saldo de Estoque (com Transação)
+START TRANSACTION;
+
+-- No Softcomshop, preço e saldo residem na tabela produto_empresa_grade
+UPDATE produto_empresa_grade peg
+INNER JOIN produto_empresa pe ON peg.produto_empresa_id = pe.id
+SET peg.preco_venda = 29.90, -- Novo preço de venda
+    peg.estoque = 150.00,    -- Novo saldo de estoque
+    peg.updated_at = NOW()
+WHERE pe.produto_id = 10     -- Informe o ID do produto
+  AND pe.empresa_id = 1
+  AND peg.deleted_at IS NULL;
+
+-- Confirmar alteração:
+COMMIT;
+
+-- Caso queira desfazer:
+-- ROLLBACK;"""
+
+        return {
+            "tipo_operacao": "UPDATE",
+            "sql_validacao": sql_val,
+            "sql_final": sql_final,
+            "tabelas_utilizadas": ["produto", "produto_empresa", "produto_empresa_grade"],
+            "explicacao": "No Softcomshop, os preços e saldos de estoque são vinculados por filial na tabela `produto_empresa_grade` relacionada a `produto_empresa` e `produto`. Na aba **1. Validação**, confira o cadastro e valores atuais. Na aba **2. Execução**, aplique a alteração dentro de uma transação segura."
+        }
+
+    # 2. DELETE / EXCLUSÃO DE VENDAS (2 ETAPAS)
     if is_delete and ("venda" in p or "pedido" in p):
         sql_val = """-- 1. Consulta de Validação (Execute para conferir os registros antes de deletar)
 SELECT 
@@ -961,7 +1003,7 @@ COMMIT;
             "explicacao": "Para deletar uma venda com segurança, utilize primeiro a aba **Validação (SELECT)** para auditar os registros afetados. Em seguida, utilize a aba **Execução** para aplicar o Soft Delete dentro de uma transação segura."
         }
 
-    # 2. UPDATE / CANCELAMENTO DE VENDAS
+    # 3. UPDATE / CANCELAMENTO DE VENDAS (2 ETAPAS)
     if is_update and ("venda" in p or "pedido" in p):
         sql_val = """-- 1. Consulta de Validação
 SELECT 
@@ -997,7 +1039,61 @@ COMMIT;"""
             "explicacao": "Na aba **Validação**, confira os dados da venda. Na aba **Execução**, aplique a atualização de status com confirmação explícita."
         }
 
-    # 3. SEFAZ / CONTINGÊNCIA
+    # 4. MARKETPLACE / INTEGRAÇÕES / CANAIS / IFOOD
+    if any("market" in kw or "ifood" in kw or "delivery" in kw or "canal" in kw or "integrac" in kw or "ecom" in kw for kw in keywords):
+        sql = """-- Consulta Analítica Completa de Integração com Marketplaces
+SELECT 
+    v.id AS venda_id,
+    v.api_data_hora_venda AS data_venda,
+    v.origem_venda,
+    v.api_app_name AS canal_marketplace,
+    v.marketplace_pedido_id AS pedido_externo_id,
+    v.valor_total AS valor_total_venda,
+    v.status AS status_venda,
+    mv.marketplace_name,
+    mp.status AS status_marketplace_pedido,
+    mp.valor_total AS valor_pedido_marketplace
+FROM venda v
+LEFT JOIN marketplace_pedido mp ON v.marketplace_pedido_id = mp.id
+LEFT JOIN marketplace_vinculado mv ON mp.marketplace_id = mv.marketplace_id
+WHERE v.deleted_at IS NULL 
+  AND v.empresa_id = 1
+  AND (v.origem_venda LIKE '%MARKETPLACE%' OR v.marketplace_pedido_id IS NOT NULL OR v.api_app_name IS NOT NULL)
+ORDER BY v.id DESC
+LIMIT 50;"""
+        return {
+            "tipo_operacao": "SELECT",
+            "sql_validacao": "",
+            "sql_final": sql,
+            "tabelas_utilizadas": ["venda", "marketplace_pedido", "marketplace_vinculado", "marketplace_config", "produto_marketplace"],
+            "explicacao": "Identificamos todas as tabelas oficiais do módulo de Marketplace no schema: `marketplace_pedido`, `marketplace_vinculado`, `marketplace_config`, `marketplace_produto`, `marketplace_categoria` e os vínculos diretos na tabela `venda` (`api_app_name`, `marketplace_pedido_id`, `origem_venda`). A consulta acima cruza os pedidos de venda com os registros de integração externa."
+        }
+
+    # 5. FATURAMENTO POR FORMA DE PAGAMENTO
+    if any(k in p for k in ["fatur", "pagament", "forma_pagamento", "cartao", "cartão", "pix", "dinheiro"]):
+        sql = """SELECT 
+    fp.descricao AS forma_pagamento,
+    COUNT(v.id) AS quantidade_vendas,
+    SUM(v.valor_total) AS total_faturado,
+    SUM(v.total_desconto) AS total_descontos,
+    ROUND(AVG(v.valor_total), 2) AS ticket_medio
+FROM venda v
+INNER JOIN financeiro_parcela p ON p.venda_id = v.id AND p.deleted_at IS NULL
+INNER JOIN forma_pagamento fp ON p.forma_pagamento_id = fp.id
+WHERE v.deleted_at IS NULL 
+  AND v.empresa_id = 1
+  AND v.status = 'FINALIZADA'
+GROUP BY fp.id, fp.descricao
+ORDER BY total_faturado DESC;"""
+        return {
+            "tipo_operacao": "SELECT",
+            "sql_validacao": "",
+            "sql_final": sql,
+            "tabelas_utilizadas": ["venda", "financeiro_parcela", "forma_pagamento"],
+            "explicacao": "Relatório consolidado de faturamento agrupado por forma de pagamento (PIX, Cartões, Dinheiro), calculando faturamento total, quantidade de vendas e ticket médio."
+        }
+
+    # 6. SEFAZ / CONTINGÊNCIA FISCAL
     if "conting" in p or "rejei" in p or ("erro" in p and "nota" in p):
         sql = """SELECT 
     v.id AS venda_id,
@@ -1023,46 +1119,16 @@ ORDER BY v.id DESC;"""
             "explicacao": "Esta consulta faz o cruzamento entre as vendas e os documentos fiscais em contingência, comparando o valor total com as parcelas financeiras para identificar eventuais divergências de centavos."
         }
 
-    # 4. BUSCA DINÂMICA INTELIGENTE SOBRE O SCHEMA DE 459 TABELAS
+    # 7. BUSCA DINÂMICA INTELIGENTE SOBRE O SCHEMA DE 459 TABELAS
     search_results = search_tables_by_topic(keywords)
     if search_results:
         top_tables = [t[0] for t in search_results[:8]]
         main_table = top_tables[0]
         
-        # Caso específico: MARKETPLACE / INTEGRAÇÃO / CANAIS
-        if any("market" in kw or "ifood" in kw or "canal" in kw for kw in keywords):
-            sql = """-- Consulta Analítica Completa de Integração com Marketplaces
-SELECT 
-    v.id AS venda_id,
-    v.api_data_hora_venda AS data_venda,
-    v.origem_venda,
-    v.api_app_name AS canal_marketplace,
-    v.marketplace_pedido_id AS pedido_externo_id,
-    v.valor_total AS valor_total_venda,
-    v.status AS status_venda,
-    mv.marketplace_name,
-    mp.status AS status_marketplace_pedido,
-    mp.valor_total AS valor_pedido_marketplace
-FROM venda v
-LEFT JOIN marketplace_pedido mp ON v.marketplace_pedido_id = mp.id
-LEFT JOIN marketplace_vinculado mv ON mp.marketplace_id = mv.marketplace_id
-WHERE v.deleted_at IS NULL 
-  AND v.empresa_id = 1
-  AND (v.origem_venda LIKE '%MARKETPLACE%' OR v.marketplace_pedido_id IS NOT NULL OR v.api_app_name IS NOT NULL)
-ORDER BY v.id DESC
-LIMIT 50;"""
-            return {
-                "tipo_operacao": "SELECT",
-                "sql_validacao": "",
-                "sql_final": sql,
-                "tabelas_utilizadas": ["venda", "marketplace_pedido", "marketplace_vinculado", "marketplace_config", "produto_marketplace"],
-                "explicacao": "Identificamos todas as tabelas oficiais do módulo de Marketplace no schema: `marketplace_pedido`, `marketplace_vinculado`, `marketplace_config`, `marketplace_produto`, `marketplace_categoria` e os vínculos diretos na tabela `venda` (`api_app_name`, `marketplace_pedido_id`, `origem_venda`). A consulta acima cruza os pedidos de venda com os registros de integração externa."
-            }
-
-        # Consulta dinâmica para tabelas encontradas pelo scoring
         sql = f"""SELECT *
 FROM {main_table}
-WHERE empresa_id = 1
+WHERE deleted_at IS NULL
+ORDER BY id DESC
 LIMIT 20;"""
         return {
             "tipo_operacao": "SELECT",
