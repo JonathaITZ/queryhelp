@@ -89,9 +89,14 @@ Responda OBRIGATORIAMENTE em JSON:
       }
     } catch (err) {
       // Falha isolada no servidor sem vazar detalhes para a resposta
-      console.error('Fallback ativado.');
+      console.error('Fallback ativado:', err);
     }
   }
+
+  // --- MOTOR SEMÂNTICO DE REGRAS E FALLBACK LOCAL ---
+  const p = message.toLowerCase();
+  const isUpdate = p.includes('update') || p.includes('alterar') || p.includes('atualizar') || p.includes('mudar') || p.includes('modificar');
+  const isDelete = p.includes('delete') || p.includes('excluir') || p.includes('apagar') || p.includes('cancelar') || p.includes('remover');
 
   // 1. ALTERAR PREÇO OU ESTOQUE DE PRODUTO (2 ETAPAS)
   if (isUpdate && (p.includes('produt') || p.includes('preco') || p.includes('preço') || p.includes('estoqu') || p.includes('grade') || p.includes('valor'))) {
