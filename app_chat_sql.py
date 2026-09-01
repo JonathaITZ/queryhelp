@@ -201,7 +201,7 @@ HTML_PAGE = """<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QueryHelp • by Dantas</title>
+    <title>QueryHelp (BETA) • by Dantas</title>
     <link rel="icon" type="image/jpeg" href="/logo.jpg">
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -264,8 +264,11 @@ HTML_PAGE = """<!DOCTYPE html>
             
             <div class="text-center mb-6">
                 <img src="/logo.jpg" alt="Logo" class="w-14 h-14 rounded-2xl mx-auto mb-3 object-cover border border-white/10 shadow-md" />
-                <h1 class="text-lg font-bold text-white tracking-tight">QueryHelp</h1>
-                <p class="text-xs text-slate-400 mt-0.5">Acesso Restrito • <span class="text-amber-400 font-mono">by Dantas</span></p>
+                <div class="flex items-center justify-center gap-2">
+                    <h1 class="text-lg font-bold text-white tracking-tight">QueryHelp</h1>
+                    <span class="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono">BETA</span>
+                </div>
+                <p class="text-xs text-slate-400 mt-1">Acesso Restrito • <span class="text-amber-400 font-mono">by Dantas</span></p>
             </div>
 
             <form id="login-form" onsubmit="handleLogin(event)" class="space-y-4">
@@ -329,6 +332,7 @@ HTML_PAGE = """<!DOCTYPE html>
                 <img src="/logo.jpg" alt="Logo" class="w-8 h-8 rounded-lg object-cover border border-white/10 shadow-sm" />
                 <div class="flex items-center gap-2">
                     <span class="text-sm font-semibold text-white tracking-tight">QueryHelp</span>
+                    <span class="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono">BETA</span>
                     <span class="text-[11px] text-amber-400/90 font-mono bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">by Dantas</span>
                 </div>
             </div>
