@@ -1,8 +1,8 @@
-// Vercel Serverless Function: /api/login
+﻿// Vercel Serverless Function: /api/login
 // Desenvolvido por Jonatha Dantas (by Dantas)
 // Segurança: Anti-Brute Force por IP, Lockout de 15 Minutos e Rate Limiting
 
-import crypto from 'crypto';
+const crypto = require('crypto');
 
 const AUTH_USER = "especialista";
 const AUTH_PASS = "7711";
@@ -23,7 +23,7 @@ function getClientIP(req) {
   return req.headers['x-real-ip'] || req.socket?.remoteAddress || '127.0.0.1';
 }
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'no-referrer');
@@ -42,7 +42,7 @@ export default async function handler(req, res) {
       const remainingSec = Math.ceil((unlockTime - now) / 1000);
       res.setHeader('Retry-After', remainingSec);
       return res.status(429).json({
-        error: `Muitas tentativas incorretas. Acesso bloqueado temporariamente. Tente novamente em ${Math.ceil(remainingSec / 60)} min.`
+        error: Muitas tentativas incorretas. Acesso bloqueado temporariamente. Tente novamente em  min.
       });
     } else {
       lockedIPs.delete(clientIP);
@@ -97,6 +97,6 @@ export default async function handler(req, res) {
   const remaining = MAX_ATTEMPTS - attempts.length;
   res.setHeader('X-RateLimit-Remaining', remaining);
   return res.status(401).json({
-    error: `Usuário ou senha incorretos. Tentativas restantes: ${remaining}.`
+    error: Usuário ou senha incorretos. Tentativas restantes: .
   });
-}
+};

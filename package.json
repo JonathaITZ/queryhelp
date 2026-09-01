@@ -1,0 +1,9 @@
+﻿{
+  "name": "queryhelp",
+  "version": "1.0.0",
+  "description": "QueryHelp - Especialista SQL Softcomshop por Jonatha Dantas",
+  "main": "api/ask.js",
+  "scripts": {
+    "start": "node app_chat_sql.py"
+  }
+}

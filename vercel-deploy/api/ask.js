@@ -16,32 +16,33 @@ function checkRateLimit(ip) {
   return true;
 }
 
-export default async function handler(req, res) {
-  const forwarded = req.headers['x-forwarded-for'];
-  const clientIP = forwarded ? forwarded.split(',')[0].trim() : (req.headers['x-real-ip'] || req.socket?.remoteAddress || '127.0.0.1');
+module.exports = async function handler(req, res) {
+  try {
+    const forwarded = req.headers['x-forwarded-for'];
+    const clientIP = forwarded ? forwarded.split(',')[0].trim() : (req.headers['x-real-ip'] || req.socket?.remoteAddress || '127.0.0.1');
 
-  if (!checkRateLimit(clientIP)) {
-    res.setHeader('Retry-After', '60');
-    return res.status(429).json({ error: 'Muitas requisições. Aguarde 1 minuto.' });
-  }
+    if (!checkRateLimit(clientIP)) {
+      res.setHeader('Retry-After', '60');
+      return res.status(429).json({ error: 'Muitas requisições. Aguarde 1 minuto.' });
+    }
 
-  // Headers Defensivos de Cyber Segurança (OWASP Standard)
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('Referrer-Policy', 'no-referrer');
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    // Headers Defensivos de Cyber Segurança (OWASP Standard)
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
-  }
+    if (req.method !== 'POST') {
+      return res.status(405).json({ error: 'Method Not Allowed' });
+    }
 
-  // Defesa de Tamanho de Entrada (Input Validation)
-  const body = req.body || {};
-  const rawMessage = typeof body.message === 'string' ? body.message : '';
-  const message = rawMessage.slice(0, 1500).trim();
-  const activeKey = body.apiKey || process.env.GEMINI_API_KEY;
+    // Defesa de Tamanho de Entrada (Input Validation)
+    const body = req.body || {};
+    const rawMessage = typeof body.message === 'string' ? body.message : '';
+    const message = rawMessage.slice(0, 1500).trim();
+    const activeKey = body.apiKey || process.env.GEMINI_API_KEY;
 
-  const SYSTEM_PROMPT = \
+    const SYSTEM_PROMPT = \
 Você é o Especialista Sênior em Engenharia de Dados e Estrutura de Banco de Dados do sistema comercial Softcomshop (MySQL 8.0).
 Sistema e plataforma projetados por Jonatha Dantas (by Dantas).
 
@@ -64,44 +65,44 @@ Responda OBRIGATORIAMENTE em JSON:
 }
 \;
 
-  if (activeKey) {
-    try {
-      const url = \https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=\\;
-      const payload = {
-        system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        contents: [{ parts: [{ text: \Gere a consulta SQL para: \\ }] }],
-        generationConfig: {
-          temperature: 0.1,
-          response_mime_type: "application/json"
+    if (activeKey) {
+      try {
+        const url = \https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=\\;
+        const payload = {
+          system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+          contents: [{ parts: [{ text: \Gere a consulta SQL para: \\ }] }],
+          generationConfig: {
+            temperature: 0.1,
+            response_mime_type: "application/json"
+          }
+        };
+
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const resData = await response.json();
+        if (resData.candidates && resData.candidates[0]?.content?.parts?.[0]?.text) {
+          const parsed = JSON.parse(resData.candidates[0].content.parts[0].text);
+          return res.status(200).json(sanitizeData(parsed));
         }
-      };
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      const resData = await response.json();
-      if (resData.candidates && resData.candidates[0]?.content?.parts?.[0]?.text) {
-        const parsed = JSON.parse(resData.candidates[0].content.parts[0].text);
-        return res.status(200).json(sanitizeData(parsed));
+      } catch (err) {
+        console.error('Fallback Gemini ativado:', err);
       }
-    } catch (err) {
-      console.error('Fallback ativado:', err);
     }
-  }
 
-  // --- MOTOR SEMÂNTICO DE REGRAS E FALLBACK LOCAL ---
-  const p = message.toLowerCase();
-  const isUpdate = p.includes('update') || p.includes('alterar') || p.includes('atualizar') || p.includes('mudar') || p.includes('modificar');
-  const isDelete = p.includes('delete') || p.includes('excluir') || p.includes('apagar') || p.includes('cancelar') || p.includes('remover');
+    // --- MOTOR SEMÂNTICO DE REGRAS E FALLBACK LOCAL ---
+    const p = message.toLowerCase();
+    const isUpdate = p.includes('update') || p.includes('alterar') || p.includes('atualizar') || p.includes('mudar') || p.includes('modificar');
+    const isDelete = p.includes('delete') || p.includes('excluir') || p.includes('apagar') || p.includes('cancelar') || p.includes('remover');
 
-  // 1. ALTERAR PREÇO OU ESTOQUE DE PRODUTO (2 ETAPAS)
-  if (isUpdate && (p.includes('produt') || p.includes('preco') || p.includes('preço') || p.includes('estoqu') || p.includes('grade') || p.includes('valor'))) {
-    return res.status(200).json(sanitizeData({
-      tipo_operacao: "UPDATE",
-      sql_validacao: \-- 1. Consulta de Validação (Conferência do Produto, Preço e Estoque Atual)
+    // 1. ALTERAR PREÇO OU ESTOQUE DE PRODUTO (2 ETAPAS)
+    if (isUpdate && (p.includes('produt') || p.includes('preco') || p.includes('preço') || p.includes('estoqu') || p.includes('grade') || p.includes('valor'))) {
+      return res.status(200).json(sanitizeData({
+        tipo_operacao: "UPDATE",
+        sql_validacao: \-- 1. Consulta de Validação (Conferência do Produto, Preço e Estoque Atual)
 SELECT 
     p.id AS produto_id,
     p.nome AS produto_nome,
@@ -118,7 +119,7 @@ INNER JOIN produto_empresa_grade peg ON peg.produto_empresa_id = pe.id
 WHERE (p.id = 10 OR p.codigo_barras = '7891234567890' OR p.nome LIKE '%NOME_PRODUTO%')
   AND pe.empresa_id = 1
   AND p.deleted_at IS NULL;\,
-      sql_final: \-- 2. Atualização Segura de Preço e/ou Saldo de Estoque (com Transação)
+        sql_final: \-- 2. Atualização Segura de Preço e/ou Saldo de Estoque (com Transação)
 START TRANSACTION;
 
 -- No Softcomshop, preço e saldo residem na tabela produto_empresa_grade
@@ -132,34 +133,34 @@ WHERE pe.produto_id = 10     -- Informe o ID do produto
   AND peg.deleted_at IS NULL;
 
 COMMIT;\,
-      tabelas_utilizadas: ['produto', 'produto_empresa', 'produto_empresa_grade'],
-      explicacao: 'No Softcomshop, os preços e saldos de estoque são vinculados por filial na tabela \produto_empresa_grade\ relacionada a \produto_empresa\ e \produto\. Na aba 1. Validação, confira os valores atuais. Na aba 2. Execução, aplique a alteração dentro da transação.'
-    }));
-  }
+        tabelas_utilizadas: ['produto', 'produto_empresa', 'produto_empresa_grade'],
+        explicacao: 'No Softcomshop, os preços e saldos de estoque são vinculados por filial na tabela \produto_empresa_grade\ relacionada a \produto_empresa\ e \produto\. Na aba 1. Validação, confira os valores atuais. Na aba 2. Execução, aplique a alteração dentro da transação.'
+      }));
+    }
 
-  // 2. DELETE / EXCLUSÃO DE VENDAS (2 ETAPAS)
-  if (isDelete && (p.includes('venda') || p.includes('pedido'))) {
-    return res.status(200).json(sanitizeData({
-      tipo_operacao: "DELETE",
-      sql_validacao: \-- 1. Consulta de Validação (Execute para conferir os registros antes de deletar)
+    // 2. DELETE / EXCLUSÃO DE VENDAS (2 ETAPAS)
+    if (isDelete && (p.includes('venda') || p.includes('pedido'))) {
+      return res.status(200).json(sanitizeData({
+        tipo_operacao: "DELETE",
+        sql_validacao: \-- 1. Consulta de Validação (Execute para conferir os registros antes de deletar)
 SELECT id AS venda_id, status, valor_total, total_pagamento, cliente_id, nfe_id, api_data_hora_venda, deleted_at
 FROM venda
 WHERE id = 100 AND empresa_id = 1 AND deleted_at IS NULL;\,
-      sql_final: \-- 2. Comando de Exclusão (Soft Delete com Transação)
+        sql_final: \-- 2. Comando de Exclusão (Soft Delete com Transação)
 START TRANSACTION;
 UPDATE venda SET deleted_at = NOW(), status = 'CANCELADA', updated_at = NOW() WHERE id = 100 AND empresa_id = 1 AND deleted_at IS NULL;
 COMMIT;\,
-      tabelas_utilizadas: ['venda', 'venda_item', 'financeiro_parcela'],
-      explicacao: 'Utilize a aba Validação para conferir a venda antes de aplicar o Soft Delete dentro da transação segura.'
-    }));
-  }
+        tabelas_utilizadas: ['venda', 'venda_item', 'financeiro_parcela'],
+        explicacao: 'Utilize a aba Validação para conferir a venda antes de aplicar o Soft Delete dentro da transação segura.'
+      }));
+    }
 
-  // 3. FATURAMENTO POR FORMA DE PAGAMENTO (PIX, CARTÃO, DINHEIRO)
-  if (p.includes('fatur') || p.includes('pagament') || p.includes('forma_pagamento') || p.includes('cartao') || p.includes('cartão') || p.includes('pix') || p.includes('dinheiro') || p.includes('recebimento')) {
-    return res.status(200).json(sanitizeData({
-      tipo_operacao: "SELECT",
-      sql_validacao: "",
-      sql_final: \-- Relatório de Faturamento Agrupado por Forma de Pagamento
+    // 3. FATURAMENTO POR FORMA DE PAGAMENTO (PIX, CARTÃO, DINHEIRO)
+    if (p.includes('fatur') || p.includes('pagament') || p.includes('forma_pagamento') || p.includes('cartao') || p.includes('cartão') || p.includes('pix') || p.includes('dinheiro') || p.includes('recebimento')) {
+      return res.status(200).json(sanitizeData({
+        tipo_operacao: "SELECT",
+        sql_validacao: "",
+        sql_final: \-- Relatório de Faturamento Agrupado por Forma de Pagamento
 SELECT 
     fp.descricao AS forma_pagamento,
     COUNT(DISTINCT v.id) AS quantidade_vendas,
@@ -174,17 +175,17 @@ WHERE v.deleted_at IS NULL
   AND v.status = 'FINALIZADA'
 GROUP BY fp.id, fp.descricao
 ORDER BY total_faturado DESC;\,
-      tabelas_utilizadas: ['venda', 'financeiro_parcela', 'forma_pagamento'],
-      explicacao: 'Relatório consolidado de faturamento agrupado por forma de pagamento (PIX, Cartões, Dinheiro, Boleto), calculando total faturado, quantidade de vendas e ticket médio com filtros padrão do Softcomshop.'
-    }));
-  }
+        tabelas_utilizadas: ['venda', 'financeiro_parcela', 'forma_pagamento'],
+        explicacao: 'Relatório consolidado de faturamento agrupado por forma de pagamento (PIX, Cartões, Dinheiro, Boleto), calculando total faturado, quantidade de vendas e ticket médio com filtros padrão do Softcomshop.'
+      }));
+    }
 
-  // 4. CONTAS A RECEBER / INADIMPLÊNCIA
-  if (p.includes('receber') || p.includes('inadimpl') || p.includes('cobranc') || p.includes('cobranç') || p.includes('duplicata')) {
-    return res.status(200).json(sanitizeData({
-      tipo_operacao: "SELECT",
-      sql_validacao: "",
-      sql_final: \-- Relatório de Contas a Receber / Inadimplência
+    // 4. CONTAS A RECEBER / INADIMPLÊNCIA
+    if (p.includes('receber') || p.includes('inadimpl') || p.includes('cobranc') || p.includes('cobranç') || p.includes('duplicata')) {
+      return res.status(200).json(sanitizeData({
+        tipo_operacao: "SELECT",
+        sql_validacao: "",
+        sql_final: \-- Relatório de Contas a Receber / Inadimplência
 SELECT 
     c.id AS cliente_id,
     c.nome_razao_social AS cliente_nome,
@@ -202,17 +203,17 @@ WHERE cr.deleted_at IS NULL
   AND cr.empresa_id = 1
   AND cr.status = 'ABERTO'
 ORDER BY cr.data_vencimento ASC;\,
-      tabelas_utilizadas: ['contas_receber', 'cliente'],
-      explicacao: 'Consulta analítica de títulos a receber com status em aberto, calculando dias de atraso e dados do cliente para cobrança.'
-    }));
-  }
+        tabelas_utilizadas: ['contas_receber', 'cliente'],
+        explicacao: 'Consulta analítica de títulos a receber com status em aberto, calculando dias de atraso e dados do cliente para cobrança.'
+      }));
+    }
 
-  // 5. CONTAS A PAGAR / FORNECEDORES
-  if (p.includes('pagar') || p.includes('fornecedor') || p.includes('despesa')) {
-    return res.status(200).json(sanitizeData({
-      tipo_operacao: "SELECT",
-      sql_validacao: "",
-      sql_final: \-- Relatório de Contas a Pagar por Fornecedor
+    // 5. CONTAS A PAGAR / FORNECEDORES
+    if (p.includes('pagar') || p.includes('fornecedor') || p.includes('despesa')) {
+      return res.status(200).json(sanitizeData({
+        tipo_operacao: "SELECT",
+        sql_validacao: "",
+        sql_final: \-- Relatório de Contas a Pagar por Fornecedor
 SELECT 
     f.id AS fornecedor_id,
     f.razao_social AS fornecedor,
@@ -227,17 +228,17 @@ INNER JOIN fornecedor f ON cp.fornecedor_id = f.id
 WHERE cp.deleted_at IS NULL 
   AND cp.empresa_id = 1
 ORDER BY cp.data_vencimento ASC;\,
-      tabelas_utilizadas: ['contas_pagar', 'fornecedor'],
-      explicacao: 'Consulta analítica de obrigações financeiras a pagar vinculadas aos seus respectivos fornecedores com data de vencimento e status.'
-    }));
-  }
+        tabelas_utilizadas: ['contas_pagar', 'fornecedor'],
+        explicacao: 'Consulta analítica de obrigações financeiras a pagar vinculadas aos seus respectivos fornecedores com data de vencimento e status.'
+      }));
+    }
 
-  // 6. ESTOQUE CRÍTICO / RUPTURA / ABAIXO DO MÍNIMO
-  if (p.includes('ruptura') || p.includes('minimo') || p.includes('mínimo') || (p.includes('estoqu') && (p.includes('baixo') || p.includes('falta') || p.includes('critico') || p.includes('crítico') || p.includes('zerad')))) {
-    return res.status(200).json(sanitizeData({
-      tipo_operacao: "SELECT",
-      sql_validacao: "",
-      sql_final: \-- Relatório de Produtos com Estoque Abaixo do Mínimo (Ruptura)
+    // 6. ESTOQUE CRÍTICO / RUPTURA / ABAIXO DO MÍNIMO
+    if (p.includes('ruptura') || p.includes('minimo') || p.includes('mínimo') || (p.includes('estoqu') && (p.includes('baixo') || p.includes('falta') || p.includes('critico') || p.includes('crítico') || p.includes('zerad')))) {
+      return res.status(200).json(sanitizeData({
+        tipo_operacao: "SELECT",
+        sql_validacao: "",
+        sql_final: \-- Relatório de Produtos com Estoque Abaixo do Mínimo (Ruptura)
 SELECT 
     p.id AS produto_id,
     p.nome AS produto_nome,
@@ -257,17 +258,17 @@ WHERE pe.empresa_id = 1
   AND peg.deleted_at IS NULL
   AND p.deleted_at IS NULL
 ORDER BY (peg.estoque_minimo - peg.estoque) DESC;\,
-      tabelas_utilizadas: ['produto', 'produto_empresa', 'produto_empresa_grade', 'fornecedor'],
-      explicacao: 'Identificação de itens em ruptura ou estoque crítico por filial (\produto_empresa_grade\), calculando a sugestão de compra para reposição.'
-    }));
-  }
+        tabelas_utilizadas: ['produto', 'produto_empresa', 'produto_empresa_grade', 'fornecedor'],
+        explicacao: 'Identificação de itens em ruptura ou estoque crítico por filial (\produto_empresa_grade\), calculando a sugestão de compra para reposição.'
+      }));
+    }
 
-  // 7. CURVA ABC / PRODUTOS MAIS VENDIDOS / RANKING
-  if (p.includes('abc') || p.includes('mais vendid') || p.includes('ranking') || p.includes('top produt') || p.includes('campeoes')) {
-    return res.status(200).json(sanitizeData({
-      tipo_operacao: "SELECT",
-      sql_validacao: "",
-      sql_final: \-- Relatório de Ranking / Curva ABC de Produtos Mais Vendidos
+    // 7. CURVA ABC / PRODUTOS MAIS VENDIDOS / RANKING
+    if (p.includes('abc') || p.includes('mais vendid') || p.includes('ranking') || p.includes('top produt') || p.includes('campeoes')) {
+      return res.status(200).json(sanitizeData({
+        tipo_operacao: "SELECT",
+        sql_validacao: "",
+        sql_final: \-- Relatório de Ranking / Curva ABC de Produtos Mais Vendidos
 SELECT 
     p.id AS produto_id,
     p.nome AS produto_nome,
@@ -285,17 +286,17 @@ WHERE v.deleted_at IS NULL
 GROUP BY p.id, p.nome, p.referencia
 ORDER BY faturamento_liquido DESC
 LIMIT 20;\,
-      tabelas_utilizadas: ['venda', 'venda_item', 'produto'],
-      explicacao: 'Ranking dos 20 produtos de maior faturamento líquido e volume de vendas, com base no histórico de vendas finalizadas do sistema.'
-    }));
-  }
+        tabelas_utilizadas: ['venda', 'venda_item', 'produto'],
+        explicacao: 'Ranking dos 20 produtos de maior faturamento líquido e volume de vendas, com base no histórico de vendas finalizadas do sistema.'
+      }));
+    }
 
-  // 8. CLIENTES / LIMITES DE CRÉDITO
-  if (p.includes('client') || p.includes('limite') || p.includes('bloqueio') || p.includes('crediario') || p.includes('crediário')) {
-    return res.status(200).json(sanitizeData({
-      tipo_operacao: "SELECT",
-      sql_validacao: "",
-      sql_final: \-- Relatório Geral de Clientes, Limites e Status
+    // 8. CLIENTES / LIMITES DE CRÉDITO
+    if (p.includes('client') || p.includes('limite') || p.includes('bloqueio') || p.includes('crediario') || p.includes('crediário')) {
+      return res.status(200).json(sanitizeData({
+        tipo_operacao: "SELECT",
+        sql_validacao: "",
+        sql_final: \-- Relatório Geral de Clientes, Limites e Status
 SELECT 
     c.id AS cliente_id,
     c.nome_razao_social AS cliente_nome,
@@ -311,17 +312,17 @@ WHERE c.deleted_at IS NULL
   AND c.empresa_id = 1
 ORDER BY c.nome_razao_social ASC
 LIMIT 50;\,
-      tabelas_utilizadas: ['cliente'],
-      explicacao: 'Consulta de base de clientes cadastrados, limites de crédito disponíveis e status de bloqueio comercial.'
-    }));
-  }
+        tabelas_utilizadas: ['cliente'],
+        explicacao: 'Consulta de base de clientes cadastrados, limites de crédito disponíveis e status de bloqueio comercial.'
+      }));
+    }
 
-  // 9. NFSE / NOTA FISCAL DE SERVIÇO / RPS / ISSQN
-  if (p.includes('nfse') || p.includes('nfs-e') || p.includes('servico') || p.includes('serviço') || p.includes('rps') || p.includes('issqn') || p.includes('tomador')) {
-    return res.status(200).json(sanitizeData({
-      tipo_operacao: "SELECT",
-      sql_validacao: "",
-      sql_final: \-- Consulta Analítica Completa de NFSe (Nota Fiscal de Serviços Eletrônica)
+    // 9. NFSE / NOTA FISCAL DE SERVIÇO / RPS / ISSQN
+    if (p.includes('nfse') || p.includes('nfs-e') || p.includes('servico') || p.includes('serviço') || p.includes('rps') || p.includes('issqn') || p.includes('tomador')) {
+      return res.status(200).json(sanitizeData({
+        tipo_operacao: "SELECT",
+        sql_validacao: "",
+        sql_final: \-- Consulta Analítica Completa de NFSe (Nota Fiscal de Serviços Eletrônica)
 SELECT 
     nfse.id AS nfse_id,
     nfse.numero_rps,
@@ -341,30 +342,30 @@ WHERE nfse.deleted_at IS NULL
   AND nfse.empresa_id = 1
 ORDER BY nfse.id DESC
 LIMIT 50;\,
-      tabelas_utilizadas: [
-        "nota_fiscal_servico_eletronica",
-        "nota_fiscal_servico_eletronica_item",
-        "nota_fiscal_servico_eletronica_tomador",
-        "nfse_aliquota_padrao",
-        "nfse_codigo_servico_item",
-        "contrato_servico"
-      ],
-      explicacao: 'Identificamos todas as tabelas oficiais do módulo de NFSe no schema: \
+        tabelas_utilizadas: [
+          "nota_fiscal_servico_eletronica",
+          "nota_fiscal_servico_eletronica_item",
+          "nota_fiscal_servico_eletronica_tomador",
+          "nfse_aliquota_padrao",
+          "nfse_codigo_servico_item",
+          "contrato_servico"
+        ],
+        explicacao: 'Identificamos todas as tabelas oficiais do módulo de NFSe no schema: \
 ota_fiscal_servico_eletronica\ (cabeçalho/RPS), \
 ota_fiscal_servico_eletronica_item\ (itens e alíquotas de ISS), \
 ota_fiscal_servico_eletronica_tomador\ (dados do tomador), \
 fse_aliquota_padrao\, \
 fse_codigo_servico_item\, \
 fse_serie\ e vínculos com \contrato_servico\.'
-    }));
-  }
+      }));
+    }
 
-  // 10. MARKETPLACE / INTEGRAÇÕES / IFOOD / DELIVERY
-  if (p.includes('market') || p.includes('ifood') || p.includes('delivery') || p.includes('integrac') || p.includes('ecom')) {
-    return res.status(200).json(sanitizeData({
-      tipo_operacao: "SELECT",
-      sql_validacao: "",
-      sql_final: \-- Consulta Analítica Completa de Integração com Marketplaces
+    // 10. MARKETPLACE / INTEGRAÇÕES / IFOOD / DELIVERY
+    if (p.includes('market') || p.includes('ifood') || p.includes('delivery') || p.includes('integrac') || p.includes('ecom')) {
+      return res.status(200).json(sanitizeData({
+        tipo_operacao: "SELECT",
+        sql_validacao: "",
+        sql_final: \-- Consulta Analítica Completa de Integração com Marketplaces
 SELECT 
     v.id AS venda_id,
     v.api_data_hora_venda AS data_venda,
@@ -384,17 +385,17 @@ WHERE v.deleted_at IS NULL
   AND (v.origem_venda LIKE '%MARKETPLACE%' OR v.marketplace_pedido_id IS NOT NULL OR v.api_app_name IS NOT NULL)
 ORDER BY v.id DESC
 LIMIT 50;\,
-      tabelas_utilizadas: ['venda', 'marketplace_pedido', 'marketplace_vinculado', 'marketplace_config', 'produto_marketplace'],
-      explicacao: 'Identificamos todas as tabelas oficiais do módulo de Marketplace no schema: \marketplace_pedido\, \marketplace_vinculado\, \marketplace_config\, \marketplace_produto\, \marketplace_categoria\ e os vínculos diretos na tabela \enda\ (\pi_app_name\, \marketplace_pedido_id\, \origem_venda\). A consulta acima cruza os pedidos de venda com os registros de integração externa.'
-    }));
-  }
+        tabelas_utilizadas: ['venda', 'marketplace_pedido', 'marketplace_vinculado', 'marketplace_config', 'produto_marketplace'],
+        explicacao: 'Identificamos todas as tabelas oficiais do módulo de Marketplace no schema: \marketplace_pedido\, \marketplace_vinculado\, \marketplace_config\, \marketplace_produto\, \marketplace_categoria\ e os vínculos diretos na tabela \enda\ (\pi_app_name\, \marketplace_pedido_id\, \origem_venda\). A consulta acima cruza os pedidos de venda com os registros de integração externa.'
+      }));
+    }
 
-  // 11. CONTINGÊNCIA SEFAZ / NOTA FISCAL ELETRÔNICA
-  if (p.includes('conting') || p.includes('rejei') || (p.includes('erro') && p.includes('nota'))) {
-    return res.status(200).json(sanitizeData({
-      tipo_operacao: "SELECT",
-      sql_validacao: "",
-      sql_final: \SELECT 
+    // 11. CONTINGÊNCIA SEFAZ / NOTA FISCAL ELETRÔNICA
+    if (p.includes('conting') || p.includes('rejei') || (p.includes('erro') && p.includes('nota'))) {
+      return res.status(200).json(sanitizeData({
+        tipo_operacao: "SELECT",
+        sql_validacao: "",
+        sql_final: \SELECT 
     v.id AS venda_id,
     v.valor_total AS total_venda,
     v.total_pagamento AS total_pago_venda,
@@ -410,17 +411,17 @@ LEFT JOIN financeiro_parcela fp ON fp.venda_id = v.id AND fp.deleted_at IS NULL
 WHERE nfe.recibo_situacao = 'CONTINGENCIA'
 GROUP BY v.id, v.valor_total, v.total_pagamento, nfe.id, nfe.numero_nfe, nfe.recibo_situacao, nfe.mensagem_erro
 ORDER BY v.id DESC;\,
-      tabelas_utilizadas: ['venda', 'nota_fiscal_eletronica', 'financeiro_parcela'],
-      explicacao: 'Consulta com cruzamento analítico entre vendas e documentos em contingência com cálculo de diferenças.'
-    }));
-  }
+        tabelas_utilizadas: ['venda', 'nota_fiscal_eletronica', 'financeiro_parcela'],
+        explicacao: 'Consulta com cruzamento analítico entre vendas e documentos em contingência com cálculo de diferenças.'
+      }));
+    }
 
-  // 12. CAIXA / TURNOS DE OPERADORES
-  if (p.includes('caixa') || p.includes('turno') || p.includes('sangria') || p.includes('suprimento')) {
-    return res.status(200).json(sanitizeData({
-      tipo_operacao: "SELECT",
-      sql_validacao: "",
-      sql_final: \-- Relatório de Controle de Turnos e Caixas de Operadores
+    // 12. CAIXA / TURNOS DE OPERADORES
+    if (p.includes('caixa') || p.includes('turno') || p.includes('sangria') || p.includes('suprimento')) {
+      return res.status(200).json(sanitizeData({
+        tipo_operacao: "SELECT",
+        sql_validacao: "",
+        sql_final: \-- Relatório de Controle de Turnos e Caixas de Operadores
 SELECT 
     c.id AS caixa_id,
     c.descricao AS nome_caixa,
@@ -440,17 +441,17 @@ WHERE t.deleted_at IS NULL
   AND c.empresa_id = 1
 ORDER BY t.data_abertura DESC
 LIMIT 20;\,
-      tabelas_utilizadas: ['caixa', 'caixa_turno', 'usuario'],
-      explicacao: 'Auditoria completa de abertura, sangrias, suprimentos e fechamento de turnos dos operadores de caixa.'
-    }));
-  }
+        tabelas_utilizadas: ['caixa', 'caixa_turno', 'usuario'],
+        explicacao: 'Auditoria completa de abertura, sangrias, suprimentos e fechamento de turnos dos operadores de caixa.'
+      }));
+    }
 
-  // 13. RESTAURANTE / MESAS
-  if (p.includes('restauran') || p.includes('mesa') || p.includes('comanda')) {
-    return res.status(200).json(sanitizeData({
-      tipo_operacao: "SELECT",
-      sql_validacao: "",
-      sql_final: \-- Monitoramento de Mesas e Comandas do Restaurante
+    // 13. RESTAURANTE / MESAS
+    if (p.includes('restauran') || p.includes('mesa') || p.includes('comanda')) {
+      return res.status(200).json(sanitizeData({
+        tipo_operacao: "SELECT",
+        sql_validacao: "",
+        sql_final: \-- Monitoramento de Mesas e Comandas do Restaurante
 SELECT 
     rm.id AS mesa_id,
     rm.numero_mesa,
@@ -464,16 +465,16 @@ LEFT JOIN usuario u ON rm.garcom_usuario_id = u.id
 WHERE rm.deleted_at IS NULL 
   AND rm.empresa_id = 1
 ORDER BY rm.numero_mesa ASC;\,
-      tabelas_utilizadas: ['restaurante_mesa', 'usuario'],
-      explicacao: 'Visão operacional do módulo de restaurante com status de mesas ocupadas/livres e consumo em tempo real.'
-    }));
-  }
+        tabelas_utilizadas: ['restaurante_mesa', 'usuario'],
+        explicacao: 'Visão operacional do módulo de restaurante com status de mesas ocupadas/livres e consumo em tempo real.'
+      }));
+    }
 
-  // Resposta padrão analítica de vendas
-  return res.status(200).json(sanitizeData({
-    tipo_operacao: "SELECT",
-    sql_validacao: "",
-    sql_final: \SELECT 
+    // Resposta padrão analítica de vendas
+    return res.status(200).json(sanitizeData({
+      tipo_operacao: "SELECT",
+      sql_validacao: "",
+      sql_final: \SELECT 
     v.id AS venda_id, 
     v.api_data_hora_venda AS data_venda, 
     v.status, 
@@ -484,10 +485,20 @@ FROM venda v
 WHERE v.deleted_at IS NULL AND v.empresa_id = 1
 ORDER BY v.id DESC
 LIMIT 10;\,
-    tabelas_utilizadas: ['venda'],
-    explicacao: 'Consulta base com as últimas vendas registradas aplicando filtros recomendados de empresa e exclusão lógica.'
-  }));
-}
+      tabelas_utilizadas: ['venda'],
+      explicacao: 'Consulta base com as últimas vendas registradas aplicando filtros recomendados de empresa e exclusão lógica.'
+    }));
+  } catch (fatalErr) {
+    console.error('Fatal API Error:', fatalErr);
+    return res.status(200).json({
+      tipo_operacao: "SELECT",
+      sql_validacao: "",
+      sql_final: \SELECT v.id, v.api_data_hora_venda, v.status, v.valor_total FROM venda v WHERE v.deleted_at IS NULL AND v.empresa_id = 1 ORDER BY v.id DESC LIMIT 10;\,
+      tabelas_utilizadas: ["venda"],
+      explicacao: "Consulta de contingência executada com segurança."
+    });
+  }
+};
 
 function sanitizeData(obj) {
   if (!obj || typeof obj !== 'object') return { error: "Erro de processamento" };
