@@ -1,0 +1,17 @@
+﻿# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.class
+python/
+
+# Zips and binaries
+*.zip
+
+# Logs and temp files
+*.log
+temp_*
+*.tmp
+
+# Visual Studio / VS Code
+.vscode/
+.idea/
