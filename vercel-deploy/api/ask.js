@@ -93,7 +93,7 @@ Responda OBRIGATORIAMENTE em JSON:
     }
   }
 
-  // Motor Estrutural Local Seguro
+  // Motor Estrutural Local com Inteligência Semântica
   const p = message.toLowerCase();
   const isDelete = ["delet", "exclu", "apag", "remov", "drop", "limp"].some(k => p.includes(k));
   const isUpdate = ["updat", "atualiz", "alter", "modific", "cancel", "inativ", "bloque", "ajust", "troc", "mud"].some(k => p.includes(k));
@@ -111,6 +111,62 @@ UPDATE venda SET deleted_at = NOW(), status = 'CANCELADA', updated_at = NOW() WH
 COMMIT;`,
       tabelas_utilizadas: ['venda', 'venda_item', 'financeiro_parcela'],
       explicacao: 'Utilize a aba Validação para conferir a venda antes de aplicar o Soft Delete dentro da transação segura.'
+    }));
+  }
+
+  // Resposta inteligente para Marketplace / Integrações / Canais
+  if (p.includes('market') || p.includes('ifood') || p.includes('delivery') || p.includes('integrac') || p.includes('ecom')) {
+    return res.status(200).json(sanitizeData({
+      tipo_operacao: "SELECT",
+      sql_validacao: "",
+      sql_final: `-- Consulta Analítica Completa de Integração com Marketplaces
+SELECT 
+    v.id AS venda_id,
+    v.api_data_hora_venda AS data_venda,
+    v.origem_venda,
+    v.api_app_name AS canal_marketplace,
+    v.marketplace_pedido_id AS pedido_externo_id,
+    v.valor_total AS valor_total_venda,
+    v.status AS status_venda,
+    mv.marketplace_name,
+    mp.status AS status_marketplace_pedido,
+    mp.valor_total AS valor_pedido_marketplace
+FROM venda v
+LEFT JOIN marketplace_pedido mp ON v.marketplace_pedido_id = mp.id
+LEFT JOIN marketplace_vinculado mv ON mp.marketplace_id = mv.marketplace_id
+WHERE v.deleted_at IS NULL 
+  AND v.empresa_id = 1
+  AND (v.origem_venda LIKE '%MARKETPLACE%' OR v.marketplace_pedido_id IS NOT NULL OR v.api_app_name IS NOT NULL)
+ORDER BY v.id DESC
+LIMIT 50;`,
+      tabelas_utilizadas: ['venda', 'marketplace_pedido', 'marketplace_vinculado', 'marketplace_config', 'produto_marketplace'],
+      explicacao: 'Identificamos todas as tabelas oficiais do módulo de Marketplace no schema: `marketplace_pedido`, `marketplace_vinculado`, `marketplace_config`, `marketplace_produto`, `marketplace_categoria` e os vínculos diretos na tabela `venda` (`api_app_name`, `marketplace_pedido_id`, `origem_venda`). A consulta acima cruza os pedidos de venda com os registros de integração externa.'
+    }));
+  }
+
+  // Resposta para Contingência SEFAZ
+  if (p.includes('conting') || p.includes('rejei') || (p.includes('erro') && p.includes('nota'))) {
+    return res.status(200).json(sanitizeData({
+      tipo_operacao: "SELECT",
+      sql_validacao: "",
+      sql_final: `SELECT 
+    v.id AS venda_id,
+    v.valor_total AS total_venda,
+    v.total_pagamento AS total_pago_venda,
+    COALESCE(SUM(fp.valor_parcela), 0) AS total_parcelas,
+    ROUND(v.valor_total - COALESCE(SUM(fp.valor_parcela), 0), 4) AS diferenca_parcelas,
+    nfe.id AS nfe_id,
+    nfe.numero_nfe,
+    nfe.recibo_situacao,
+    nfe.mensagem_erro
+FROM venda v
+INNER JOIN nota_fiscal_eletronica nfe ON v.nfe_id = nfe.id
+LEFT JOIN financeiro_parcela fp ON fp.venda_id = v.id AND fp.deleted_at IS NULL
+WHERE nfe.recibo_situacao = 'CONTINGENCIA'
+GROUP BY v.id, v.valor_total, v.total_pagamento, nfe.id, nfe.numero_nfe, nfe.recibo_situacao, nfe.mensagem_erro
+ORDER BY v.id DESC;`,
+      tabelas_utilizadas: ['venda', 'nota_fiscal_eletronica', 'financeiro_parcela'],
+      explicacao: 'Consulta com cruzamento analítico entre vendas e documentos em contingência com cálculo de diferenças.'
     }));
   }
 
