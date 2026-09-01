@@ -8,6 +8,7 @@ const AUTH_USERS = ['especialistas', 'especialista', 'admin'];
 const AUTH_PASS = '7711';
 const JWT_SECRET = process.env.JWT_SECRET || 'QueryHelp-Secure-Key-by-Jonatha-Dantas-2026';
 
+// Armazenamento em memória para Rate Limiting
 const loginAttempts = new Map();
 
 function getClientIP(req) {
@@ -37,7 +38,7 @@ function recordAttempt(ip, success) {
   let data = loginAttempts.get(ip) || { count: 0, lockedUntil: 0 };
   data.count += 1;
   if (data.count >= 5) {
-    data.lockedUntil = now + (15 * 60 * 1000);
+    data.lockedUntil = now + (15 * 60 * 1000); // Bloqueio de 15 minutos
   }
   loginAttempts.set(ip, data);
 }
@@ -45,7 +46,7 @@ function recordAttempt(ip, success) {
 function generateSignedToken(username) {
   const payload = JSON.stringify({
     user: username,
-    exp: Date.now() + (24 * 60 * 60 * 1000)
+    exp: Date.now() + (24 * 60 * 60 * 1000) // 24 horas de validade
   });
   const b64Payload = Buffer.from(payload).toString('base64url');
   const signature = crypto.createHmac('sha256', JWT_SECRET).update(b64Payload).digest('base64url');
