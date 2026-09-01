@@ -905,7 +905,12 @@ def search_tables_by_topic(keywords):
             matched_cols = [c for c in col_names if kw in c]
             score += len(matched_cols) * 4
 
-      def generate_structure_response(prompt_text):
+        if score > 0:
+            scores[t_name] = (score, t_data)
+
+    return sorted(scores.items(), key=lambda x: x[1][0], reverse=True)
+
+def generate_structure_response(prompt_text):
     """Motor especialista local com inteligência de negócio e busca semântica em 459 tabelas."""
     p = prompt_text.lower()
     keywords = extract_semantic_keywords(prompt_text)
