@@ -580,13 +580,13 @@ HTML_PAGE = """<!DOCTYPE html>
                     throw new Error('Sessão expirada. Faça login novamente.');
                 }
 
-                if (response.status === 429) {
-                    const errData = await response.json();
-                    throw new Error(errData.error || 'Limite de requisições excedido. Aguarde alguns instantes.');
-                }
-
                 if (!response.ok) {
-                    throw new Error('Falha no processamento seguro.');
+                    let errMsg = 'Falha no processamento.';
+                    try {
+                        const errData = await response.json();
+                        if (errData && errData.error) errMsg = errData.error;
+                    } catch (_) {}
+                    throw new Error(errMsg);
                 }
 
                 const data = await response.json();
@@ -594,7 +594,7 @@ HTML_PAGE = """<!DOCTYPE html>
                 appendBotMessage(data);
             } catch (err) {
                 removeLoadingMessage(loadingId);
-                appendErrorMessage(err.message);
+                appendErrorMessage('Não foi possível gerar a resposta: ' + err.message);
             }
         }
 
