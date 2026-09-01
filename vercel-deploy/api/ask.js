@@ -93,11 +93,47 @@ Responda OBRIGATORIAMENTE em JSON:
     }
   }
 
-  // Motor Estrutural Local com Inteligência Semântica
-  const p = message.toLowerCase();
-  const isDelete = ["delet", "exclu", "apag", "remov", "drop", "limp"].some(k => p.includes(k));
-  const isUpdate = ["updat", "atualiz", "alter", "modific", "cancel", "inativ", "bloque", "ajust", "troc", "mud"].some(k => p.includes(k));
+  // 1. ALTERAR PREÇO OU ESTOQUE DE PRODUTO (2 ETAPAS)
+  if (isUpdate && (p.includes('produt') || p.includes('preco') || p.includes('preço') || p.includes('estoqu') || p.includes('grade') || p.includes('valor'))) {
+    return res.status(200).json(sanitizeData({
+      tipo_operacao: "UPDATE",
+      sql_validacao: `-- 1. Consulta de Validação (Conferência do Produto, Preço e Estoque Atual)
+SELECT 
+    p.id AS produto_id,
+    p.nome AS produto_nome,
+    p.referencia,
+    peg.id AS grade_id,
+    peg.codigo_barra,
+    peg.descricao AS variacao_grade,
+    peg.preco_venda AS preco_atual,
+    peg.estoque AS estoque_atual,
+    peg.updated_at AS ultima_atualizacao
+FROM produto p
+INNER JOIN produto_empresa pe ON pe.produto_id = p.id
+INNER JOIN produto_empresa_grade peg ON peg.produto_empresa_id = pe.id
+WHERE (p.id = 10 OR p.codigo_barras = '7891234567890' OR p.nome LIKE '%NOME_PRODUTO%')
+  AND pe.empresa_id = 1
+  AND p.deleted_at IS NULL;`,
+      sql_final: `-- 2. Atualização Segura de Preço e/ou Saldo de Estoque (com Transação)
+START TRANSACTION;
 
+-- No Softcomshop, preço e saldo residem na tabela produto_empresa_grade
+UPDATE produto_empresa_grade peg
+INNER JOIN produto_empresa pe ON peg.produto_empresa_id = pe.id
+SET peg.preco_venda = 29.90, -- Novo preço de venda
+    peg.estoque = 150.00,    -- Novo saldo de estoque
+    peg.updated_at = NOW()
+WHERE pe.produto_id = 10     -- Informe o ID do produto
+  AND pe.empresa_id = 1
+  AND peg.deleted_at IS NULL;
+
+COMMIT;`,
+      tabelas_utilizadas: ['produto', 'produto_empresa', 'produto_empresa_grade'],
+      explicacao: 'No Softcomshop, os preços e saldos de estoque são vinculados por filial na tabela `produto_empresa_grade` relacionada a `produto_empresa` e `produto`. Na aba 1. Validação, confira os valores atuais. Na aba 2. Execução, aplique a alteração dentro da transação.'
+    }));
+  }
+
+  // 2. DELETE / EXCLUSÃO DE VENDAS (2 ETAPAS)
   if (isDelete && (p.includes('venda') || p.includes('pedido'))) {
     return res.status(200).json(sanitizeData({
       tipo_operacao: "DELETE",
