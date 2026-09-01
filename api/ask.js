@@ -150,7 +150,44 @@ COMMIT;`,
     }));
   }
 
-  // Resposta inteligente para Marketplace / Integrações / Canais
+  // 3. NFSE / NOTA FISCAL DE SERVIÇO / RPS / ISSQN
+  if (p.includes('nfse') || p.includes('nfs-e') || p.includes('servico') || p.includes('serviço') || p.includes('rps') || p.includes('issqn') || p.includes('tomador')) {
+    return res.status(200).json(sanitizeData({
+      tipo_operacao: "SELECT",
+      sql_validacao: "",
+      sql_final: `-- Consulta Analítica Completa de NFSe (Nota Fiscal de Serviços Eletrônica)
+SELECT 
+    nfse.id AS nfse_id,
+    nfse.numero_rps,
+    nfse.status_rps,
+    nfse.data_emissao,
+    nfse.total_valor_servico,
+    nfse.aliquota_iss,
+    nfse.iss_retido,
+    tomador.tomador_razao_social,
+    tomador.tomador_cnpj_cpf,
+    item.discriminacao_servico,
+    item.valor_servico
+FROM nota_fiscal_servico_eletronica nfse
+LEFT JOIN nota_fiscal_servico_eletronica_tomador tomador ON tomador.nfse_id = nfse.id
+LEFT JOIN nota_fiscal_servico_eletronica_item item ON item.nfse_id = nfse.id
+WHERE nfse.deleted_at IS NULL 
+  AND nfse.empresa_id = 1
+ORDER BY nfse.id DESC
+LIMIT 50;`,
+      tabelas_utilizadas: [
+        "nota_fiscal_servico_eletronica",
+        "nota_fiscal_servico_eletronica_item",
+        "nota_fiscal_servico_eletronica_tomador",
+        "nfse_aliquota_padrao",
+        "nfse_codigo_servico_item",
+        "contrato_servico"
+      ],
+      explicacao: 'Identificamos todas as tabelas oficiais do módulo de NFSe no schema: `nota_fiscal_servico_eletronica` (cabeçalho/RPS), `nota_fiscal_servico_eletronica_item` (itens e alíquotas de ISS), `nota_fiscal_servico_eletronica_tomador` (dados do tomador), `nfse_aliquota_padrao`, `nfse_codigo_servico_item`, `nfse_serie` e vínculos com `contrato_servico`.'
+    }));
+  }
+
+  // 4. Resposta inteligente para Marketplace / Integrações / Canais
   if (p.includes('market') || p.includes('ifood') || p.includes('delivery') || p.includes('integrac') || p.includes('ecom')) {
     return res.status(200).json(sanitizeData({
       tipo_operacao: "SELECT",
