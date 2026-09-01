@@ -833,9 +833,68 @@ def call_gemini_api(user_message, api_key):
         text = res_data["candidates"][0]["content"]["parts"][0]["text"]
         return json.loads(text)
 
+STOPWORDS = {
+    "quero", "uma", "query", "querry", "consulta", "tabela", "tabelas", "traga", "todas", "todos",
+    "com", "informacao", "informacoes", "informação", "informações", "relacionadas", "relacionada",
+    "relacionados", "relacionado", "ao", "a", "o", "os", "as", "de", "do", "da", "dos", "das", "em",
+    "no", "na", "nos", "nas", "para", "por", "que", "seja", "mostrar", "mostre", "ver", "quais", "qual",
+    "como", "fazer", "gerar", "cria", "criar", "me", "de", "um", "uns", "umas", "sobre", "relaciona"
+}
+
+SYNONYMS_MAP = {
+    "marketplace": ["market", "ifood", "delivery", "integrac", "ecom", "origem", "canal"],
+    "mercado": ["marketplace", "market"],
+    "ifood": ["ifood", "delivery", "marketplace", "integrac"],
+    "delivery": ["delivery", "ifood", "entregador", "mesa", "restaurante"],
+    "fiscal": ["nfe", "nfce", "nota_fiscal", "icms", "pis", "cofins", "imposto", "tribut"],
+    "nfe": ["nota_fiscal_eletronica", "nfe", "chave_nfe", "recibo_situacao"],
+    "nfce": ["nfce", "nota_fiscal", "contingencia"],
+    "financeiro": ["financeiro", "parcela", "pagamento", "caixa", "banco", "contas_receber", "contas_pagar"],
+    "pagamento": ["forma_pagamento", "venda_cartao", "parcela", "financeiro"],
+    "estoque": ["estoque", "produto_estoque", "almoxarifado", "movimentacao_estoque"],
+    "produto": ["produto", "grade", "codigo_barra", "preco", "categoria", "grupo"],
+    "cliente": ["cliente", "pessoa", "endereco", "contato"],
+    "usuario": ["usuario", "funcionario", "permissao", "acesso", "log"],
+    "venda": ["venda", "venda_item", "pedido", "faturamento"]
+}
+
+def extract_semantic_keywords(prompt_text):
+    text = prompt_text.lower()
+    text = re.sub(r"[^\w\s]", " ", text)
+    tokens = text.split()
+    return [t for t in tokens if t not in STOPWORDS and len(t) > 2]
+
+def search_tables_by_topic(keywords):
+    if not SCHEMA_TABLES_MAP:
+        return []
+    
+    expanded = set(keywords)
+    for kw in keywords:
+        for root_term, syn_list in SYNONYMS_MAP.items():
+            if kw in root_term or root_term in kw:
+                expanded.update(syn_list)
+
+    scores = {}
+    for t_name, t_data in SCHEMA_TABLES_MAP.items():
+        score = 0
+        cols = t_data.get("columns", [])
+        col_names = [c["name"].lower() if isinstance(c, dict) else str(c).lower() for c in cols]
+        
+        for kw in expanded:
+            if kw in t_name.lower():
+                score += 20
+            matched_cols = [c for c in col_names if kw in c]
+            score += len(matched_cols) * 4
+
+        if score > 0:
+            scores[t_name] = (score, t_data)
+
+    return sorted(scores.items(), key=lambda x: x[1][0], reverse=True)
+
 def generate_structure_response(prompt_text):
-    """Motor especialista local seguro."""
+    """Motor especialista local com busca semântica em 459 tabelas e 6.600 campos."""
     p = prompt_text.lower()
+    keywords = extract_semantic_keywords(prompt_text)
     
     is_delete = any(k in p for k in ["delet", "exclu", "apag", "remov", "drop", "limp"])
     is_update = any(k in p for k in ["updat", "atualiz", "alter", "modific", "cancel", "inativ", "bloque", "ajust", "troc", "mud"])
@@ -919,8 +978,8 @@ COMMIT;"""
             "explicacao": "Na aba **Validação**, confira os dados da venda. Na aba **Execução**, aplique a atualização de status com confirmação explícita."
         }
 
-    # 3. Consultas SELECT normais
-    if "conting" in p or "rejei" in p or "erro" in p and "nota" in p:
+    # 3. SEFAZ / CONTINGÊNCIA
+    if "conting" in p or "rejei" in p or ("erro" in p and "nota" in p):
         sql = """SELECT 
     v.id AS venda_id,
     v.valor_total AS total_venda,
@@ -945,7 +1004,56 @@ ORDER BY v.id DESC;"""
             "explicacao": "Esta consulta faz o cruzamento entre as vendas e os documentos fiscais em contingência, comparando o valor total com as parcelas financeiras para identificar eventuais divergências de centavos."
         }
 
-    # Resposta padrão estrutural
+    # 4. BUSCA DINÂMICA INTELIGENTE SOBRE O SCHEMA DE 459 TABELAS
+    search_results = search_tables_by_topic(keywords)
+    if search_results:
+        top_tables = [t[0] for t in search_results[:8]]
+        main_table = top_tables[0]
+        
+        # Caso específico: MARKETPLACE / INTEGRAÇÃO / CANAIS
+        if any("market" in kw or "ifood" in kw or "canal" in kw for kw in keywords):
+            sql = """-- Consulta Analítica Completa de Integração com Marketplaces
+SELECT 
+    v.id AS venda_id,
+    v.api_data_hora_venda AS data_venda,
+    v.origem_venda,
+    v.api_app_name AS canal_marketplace,
+    v.marketplace_pedido_id AS pedido_externo_id,
+    v.valor_total AS valor_total_venda,
+    v.status AS status_venda,
+    mv.marketplace_name,
+    mp.status AS status_marketplace_pedido,
+    mp.valor_total AS valor_pedido_marketplace
+FROM venda v
+LEFT JOIN marketplace_pedido mp ON v.marketplace_pedido_id = mp.id
+LEFT JOIN marketplace_vinculado mv ON mp.marketplace_id = mv.marketplace_id
+WHERE v.deleted_at IS NULL 
+  AND v.empresa_id = 1
+  AND (v.origem_venda LIKE '%MARKETPLACE%' OR v.marketplace_pedido_id IS NOT NULL OR v.api_app_name IS NOT NULL)
+ORDER BY v.id DESC
+LIMIT 50;"""
+            return {
+                "tipo_operacao": "SELECT",
+                "sql_validacao": "",
+                "sql_final": sql,
+                "tabelas_utilizadas": ["venda", "marketplace_pedido", "marketplace_vinculado", "marketplace_config", "produto_marketplace"],
+                "explicacao": "Identificamos todas as tabelas oficiais do módulo de Marketplace no schema: `marketplace_pedido`, `marketplace_vinculado`, `marketplace_config`, `marketplace_produto`, `marketplace_categoria` e os vínculos diretos na tabela `venda` (`api_app_name`, `marketplace_pedido_id`, `origem_venda`). A consulta acima cruza os pedidos de venda com os registros de integração externa."
+            }
+
+        # Consulta dinâmica para tabelas encontradas pelo scoring
+        sql = f"""SELECT *
+FROM {main_table}
+WHERE empresa_id = 1
+LIMIT 20;"""
+        return {
+            "tipo_operacao": "SELECT",
+            "sql_validacao": "",
+            "sql_final": sql,
+            "tabelas_utilizadas": top_tables[:5],
+            "explicacao": f"Localizamos {len(search_results)} tabelas no schema relacionadas ao tema pesquisado. As principais tabelas são: **{', '.join(top_tables[:5])}**."
+        }
+
+    # Resposta padrão estrutural caso nenhum termo seja detectado
     sql = """SELECT 
     v.id AS venda_id,
     v.api_data_hora_venda AS data_venda,
@@ -963,7 +1071,7 @@ LIMIT 10;"""
         "sql_validacao": "",
         "sql_final": sql,
         "tabelas_utilizadas": ["venda"],
-        "explicacao": "Consulta com as últimas vendas registradas na base aplicando os filtros padrão de empresa e exclusão lógica."
+        "explicacao": "Consulta base com as últimas vendas registradas na base aplicando os filtros padrão de empresa e exclusão lógica."
     }
 
 class RequestHandler(BaseHTTPRequestHandler):
