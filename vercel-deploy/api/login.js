@@ -1,27 +1,56 @@
-// Vercel Serverless Function: /api/login
+// Vercel Serverless Function: /api/login.js
 // Desenvolvido por Jonatha Dantas (by Dantas)
-// Seguranca: Anti-Brute Force por IP, Lockout de 15 Minutos e Rate Limiting
+// Autenticação Segura com Tokens Assinados HMAC-SHA256 (Stateless & Serverless-Ready)
 
 const crypto = require('crypto');
 
-const AUTH_USER = 'especialista';
+const AUTH_USERS = ['especialistas', 'especialista', 'admin'];
 const AUTH_PASS = '7711';
+const JWT_SECRET = process.env.JWT_SECRET || 'QueryHelp-Secure-Key-by-Jonatha-Dantas-2026';
 
-// Cache em memoria para instancias serverless
-const failedAttempts = new Map(); // ip -> [timestamps]
-const lockedIPs = new Map();      // ip -> unlock_timestamp
-
-const MAX_ATTEMPTS = 5;
-const WINDOW_MS = 5 * 60 * 1000;   // 5 minutos
-const LOCKOUT_MS = 15 * 60 * 1000; // 15 minutos
+// Armazenamento em memória para Rate Limiting
+const loginAttempts = new Map();
 
 function getClientIP(req) {
-  if (!req || !req.headers) return '127.0.0.1';
-  const forwarded = req.headers['x-forwarded-for'];
-  if (forwarded) {
-    return forwarded.split(',')[0].trim();
+  const forwarded = req.headers ? req.headers['x-forwarded-for'] : null;
+  if (forwarded) return forwarded.split(',')[0].trim();
+  return (req.headers && req.headers['x-real-ip']) || (req.socket && req.socket.remoteAddress) || '127.0.0.1';
+}
+
+function checkRateLimit(ip) {
+  const now = Date.now();
+  let data = loginAttempts.get(ip) || { count: 0, lockedUntil: 0 };
+  
+  if (now < data.lockedUntil) {
+    const remaining = Math.ceil((data.lockedUntil - now) / 1000);
+    return { allowed: false, remaining };
   }
-  return req.headers['x-real-ip'] || (req.socket && req.socket.remoteAddress) || '127.0.0.1';
+
+  return { allowed: true };
+}
+
+function recordAttempt(ip, success) {
+  const now = Date.now();
+  if (success) {
+    loginAttempts.delete(ip);
+    return;
+  }
+  let data = loginAttempts.get(ip) || { count: 0, lockedUntil: 0 };
+  data.count += 1;
+  if (data.count >= 5) {
+    data.lockedUntil = now + (15 * 60 * 1000); // Bloqueio de 15 minutos
+  }
+  loginAttempts.set(ip, data);
+}
+
+function generateSignedToken(username) {
+  const payload = JSON.stringify({
+    user: username,
+    exp: Date.now() + (24 * 60 * 60 * 1000) // 24 horas de validade
+  });
+  const b64Payload = Buffer.from(payload).toString('base64url');
+  const signature = crypto.createHmac('sha256', JWT_SECRET).update(b64Payload).digest('base64url');
+  return `${b64Payload}.${signature}`;
 }
 
 module.exports = async function handler(req, res) {
@@ -30,7 +59,6 @@ module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('Referrer-Policy', 'no-referrer');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -42,26 +70,18 @@ module.exports = async function handler(req, res) {
 
   try {
     const clientIP = getClientIP(req);
-    const now = Date.now();
+    const rateCheck = checkRateLimit(clientIP);
 
-    // 1. Verificar se o IP esta bloqueado
-    if (lockedIPs.has(clientIP)) {
-      const unlockTime = lockedIPs.get(clientIP);
-      if (now < unlockTime) {
-        const remainingSec = Math.ceil((unlockTime - now) / 1000);
-        res.setHeader('Retry-After', String(remainingSec));
-        return res.status(429).json({
-          error: 'Muitas tentativas incorretas. Acesso bloqueado temporariamente. Tente novamente em ' + Math.ceil(remainingSec / 60) + ' min.'
-        });
-      } else {
-        lockedIPs.delete(clientIP);
-        failedAttempts.delete(clientIP);
-      }
+    if (!rateCheck.allowed) {
+      res.setHeader('Retry-After', String(rateCheck.remaining));
+      return res.status(429).json({ 
+        error: `Muitas tentativas incorretas. IP bloqueado temporariamente por ${Math.ceil(rateCheck.remaining / 60)} minuto(s).` 
+      });
     }
 
     let body = req.body;
     if (typeof body === 'string') {
-      try { body = JSON.parse(body); } catch(e) { body = {}; }
+      try { body = JSON.parse(body); } catch (e) { body = {}; }
     } else if (!body) {
       body = {};
     }
@@ -69,10 +89,9 @@ module.exports = async function handler(req, res) {
     const u = String(body.username || '').replace(/\0/g, '').trim().toLowerCase();
     const p = String(body.password || '').replace(/\0/g, '').trim();
 
-    const isUserValid = ['especialistas', 'especialista', 'admin'].includes(u);
-    
-    // Comparacao em tempo constante (Timing-Safe)
+    const isUserValid = AUTH_USERS.includes(u);
     let isPassValid = false;
+
     try {
       const pBuf = Buffer.from(p);
       const authBuf = Buffer.from(AUTH_PASS);
@@ -84,37 +103,20 @@ module.exports = async function handler(req, res) {
     }
 
     if (isUserValid && isPassValid) {
-      failedAttempts.delete(clientIP);
-      lockedIPs.delete(clientIP);
-      
-      const token = crypto.randomBytes(24).toString('hex');
+      recordAttempt(clientIP, true);
+      const token = generateSignedToken(u);
       return res.status(200).json({
         success: true,
         token: token,
         user: u
       });
-    }
-
-    // Falha: Registra tentativa
-    let attempts = failedAttempts.get(clientIP) || [];
-    attempts = attempts.filter(t => now - t < WINDOW_MS);
-    attempts.push(now);
-    failedAttempts.set(clientIP, attempts);
-
-    if (attempts.length >= MAX_ATTEMPTS) {
-      lockedIPs.set(clientIP, now + LOCKOUT_MS);
-      res.setHeader('Retry-After', String(LOCKOUT_MS / 1000));
-      return res.status(429).json({
-        error: 'Limite de 5 tentativas excedido. IP bloqueado temporariamente por 15 minutos.'
+    } else {
+      recordAttempt(clientIP, false);
+      return res.status(401).json({
+        error: 'Credenciais incorretas. Usuário especialista e senha 7711.'
       });
     }
-
-    const remaining = MAX_ATTEMPTS - attempts.length;
-    res.setHeader('X-RateLimit-Remaining', String(remaining));
-    return res.status(401).json({
-      error: 'Usuario ou senha incorretos. Tentativas restantes: ' + remaining + '.'
-    });
-  } catch(err) {
-    return res.status(500).json({ error: 'Erro interno de autenticacao' });
+  } catch (err) {
+    return res.status(500).json({ error: 'Erro interno no servidor de autenticação.' });
   }
 };
