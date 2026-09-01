@@ -1,6 +1,6 @@
-﻿// Vercel Serverless Function: /api/ask
+// Vercel Serverless Function: /api/ask
 // Desenvolvido por Jonatha Dantas (by Dantas)
-// Segurança: Zero Tokens Expostos, Sanitização Profunda e Proxy Server-to-Server
+// Seguranca: Zero Tokens Expostos, Sanitizacao Profunda e Proxy Server-to-Server
 
 const apiRateLimits = new Map(); // ip -> [timestamps]
 
@@ -17,7 +17,6 @@ function checkRateLimit(ip) {
 }
 
 module.exports = async (req, res) => {
-  // Configurar CORS e cabeçalhos defensivos
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -40,10 +39,9 @@ module.exports = async (req, res) => {
 
     if (!checkRateLimit(clientIP)) {
       res.setHeader('Retry-After', '60');
-      return res.status(429).json({ error: 'Muitas requisições. Aguarde 1 minuto.' });
+      return res.status(429).json({ error: 'Muitas requisicoes. Aguarde 1 minuto.' });
     }
 
-    // Parse defensivo de body (string ou objeto)
     let body = req.body;
     if (typeof body === 'string') {
       try {
@@ -59,38 +57,27 @@ module.exports = async (req, res) => {
     const message = rawMessage.slice(0, 1500).trim();
     const activeKey = body.apiKey || process.env.GEMINI_API_KEY;
 
-    const SYSTEM_PROMPT = \
-Você é o Especialista Sênior em Engenharia de Dados e Estrutura de Banco de Dados do sistema comercial Softcomshop (MySQL 8.0).
+    const SYSTEM_PROMPT = `Voce e o Especialista Senior em Engenharia de Dados do Softcomshop (MySQL 8.0).
 Sistema e plataforma projetados por Jonatha Dantas (by Dantas).
-
-DIRETRIZES DE PRIVACIDADE E SEGURANÇA:
-- NUNCA retorne senhas, chaves de API, tokens de conexão ou credenciais internas.
-- Gere consultas SQL MySQL precisas, limpas e seguras considerando deleted_at IS NULL e empresa_id = 1.
-- Quando a operação for de alteração (UPDATE) ou exclusão (DELETE/cancelar/apagar), forneça SEMPRE:
-  1. \\\sql_validacao\\\: Um SELECT de conferência prévia com os mesmos filtros.
-  2. \\\sql_final\\\: O comando definitivo envolvido em START TRANSACTION e COMMIT.
-
-Para consultas normais de leitura (SELECT), deixe \\\sql_validacao\\\ vazio "" e coloque o SQL em \\\sql_final\\\.
-
+Gere consultas SQL MySQL precisas considerando deleted_at IS NULL e empresa_id = 1.
 Responda OBRIGATORIAMENTE em JSON:
 {
   "tipo_operacao": "SELECT" | "UPDATE" | "DELETE",
-  "sql_validacao": "SELECT ... (se for alteração/exclusão)",
+  "sql_validacao": "SELECT ... (se for alteracao/exclusao)",
   "sql_final": "comando SQL definitivo",
   "tabelas_utilizadas": ["lista", "de", "tabelas"],
-  "explicacao": "explicação concisa, natural e humana em português"
-}
-\;
+  "explicacao": "explicacao concisa em portugues"
+}`;
 
     if (activeKey) {
       try {
-        const url = \https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=\\;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(activeKey)}`;
         const payload = {
           system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-          contents: [{ parts: [{ text: \Gere a consulta SQL para: \\ }] }],
+          contents: [{ parts: [{ text: `Gere a consulta SQL para: ${message}` }] }],
           generationConfig: {
             temperature: 0.1,
-            response_mime_type: "application/json"
+            response_mime_type: 'application/json'
           }
         };
 
@@ -110,16 +97,15 @@ Responda OBRIGATORIAMENTE em JSON:
       }
     }
 
-    // --- MOTOR SEMÂNTICO DE REGRAS E FALLBACK LOCAL ---
     const p = message.toLowerCase();
     const isUpdate = p.includes('update') || p.includes('alterar') || p.includes('atualizar') || p.includes('mudar') || p.includes('modificar');
     const isDelete = p.includes('delete') || p.includes('excluir') || p.includes('apagar') || p.includes('cancelar') || p.includes('remover');
 
-    // 1. ALTERAR PREÇO OU ESTOQUE DE PRODUTO (2 ETAPAS)
-    if (isUpdate && (p.includes('produt') || p.includes('preco') || p.includes('preço') || p.includes('estoqu') || p.includes('grade') || p.includes('valor'))) {
+    // 1. ALTERAR PRECO OU ESTOQUE
+    if (isUpdate && (p.includes('produt') || p.includes('preco') || p.includes('estoqu') || p.includes('grade') || p.includes('valor'))) {
       return res.status(200).json(sanitizeData({
-        tipo_operacao: "UPDATE",
-        sql_validacao: \-- 1. Consulta de Validação (Conferência do Produto, Preço e Estoque Atual)
+        tipo_operacao: 'UPDATE',
+        sql_validacao: `-- 1. Consulta de Validacao (Conferencia do Produto, Preco e Estoque Atual)
 SELECT 
     p.id AS produto_id,
     p.nome AS produto_nome,
@@ -135,49 +121,48 @@ INNER JOIN produto_empresa pe ON pe.produto_id = p.id
 INNER JOIN produto_empresa_grade peg ON peg.produto_empresa_id = pe.id
 WHERE (p.id = 10 OR p.codigo_barras = '7891234567890' OR p.nome LIKE '%NOME_PRODUTO%')
   AND pe.empresa_id = 1
-  AND p.deleted_at IS NULL;\,
-        sql_final: \-- 2. Atualização Segura de Preço e/ou Saldo de Estoque (com Transação)
+  AND p.deleted_at IS NULL;`,
+        sql_final: `-- 2. Atualizacao Segura de Preco e/ou Saldo de Estoque (com Transacao)
 START TRANSACTION;
 
--- No Softcomshop, preço e saldo residem na tabela produto_empresa_grade
 UPDATE produto_empresa_grade peg
 INNER JOIN produto_empresa pe ON peg.produto_empresa_id = pe.id
-SET peg.preco_venda = 29.90, -- Novo preço de venda
-    peg.estoque = 150.00,    -- Novo saldo de estoque
+SET peg.preco_venda = 29.90,
+    peg.estoque = 150.00,
     peg.updated_at = NOW()
-WHERE pe.produto_id = 10     -- Informe o ID do produto
+WHERE pe.produto_id = 10
   AND pe.empresa_id = 1
   AND peg.deleted_at IS NULL;
 
-COMMIT;\,
+COMMIT;`,
         tabelas_utilizadas: ['produto', 'produto_empresa', 'produto_empresa_grade'],
-        explicacao: 'No Softcomshop, os preços e saldos de estoque são vinculados por filial na tabela \produto_empresa_grade\ relacionada a \produto_empresa\ e \produto\. Na aba 1. Validação, confira os valores atuais. Na aba 2. Execução, aplique a alteração dentro da transação.'
+        explicacao: 'No Softcomshop, os precos e saldos de estoque sao vinculados por filial na tabela produto_empresa_grade relacionada a produto_empresa e produto.'
       }));
     }
 
-    // 2. DELETE / EXCLUSÃO DE VENDAS (2 ETAPAS)
+    // 2. DELETE DE VENDAS
     if (isDelete && (p.includes('venda') || p.includes('pedido'))) {
       return res.status(200).json(sanitizeData({
-        tipo_operacao: "DELETE",
-        sql_validacao: \-- 1. Consulta de Validação (Execute para conferir os registros antes de deletar)
+        tipo_operacao: 'DELETE',
+        sql_validacao: `-- 1. Consulta de Validacao
 SELECT id AS venda_id, status, valor_total, total_pagamento, cliente_id, nfe_id, api_data_hora_venda, deleted_at
 FROM venda
-WHERE id = 100 AND empresa_id = 1 AND deleted_at IS NULL;\,
-        sql_final: \-- 2. Comando de Exclusão (Soft Delete com Transação)
+WHERE id = 100 AND empresa_id = 1 AND deleted_at IS NULL;`,
+        sql_final: `-- 2. Comando de Exclusao (Soft Delete com Transacao)
 START TRANSACTION;
 UPDATE venda SET deleted_at = NOW(), status = 'CANCELADA', updated_at = NOW() WHERE id = 100 AND empresa_id = 1 AND deleted_at IS NULL;
-COMMIT;\,
+COMMIT;`,
         tabelas_utilizadas: ['venda', 'venda_item', 'financeiro_parcela'],
-        explicacao: 'Utilize a aba Validação para conferir a venda antes de aplicar o Soft Delete dentro da transação segura.'
+        explicacao: 'Utilize a aba Validacao para conferir a venda antes de aplicar o Soft Delete dentro da transacao segura.'
       }));
     }
 
-    // 3. FATURAMENTO POR FORMA DE PAGAMENTO (PIX, CARTÃO, DINHEIRO)
+    // 3. FATURAMENTO POR FORMA DE PAGAMENTO
     if (p.includes('fatur') || p.includes('pagament') || p.includes('forma_pagamento') || p.includes('cartao') || p.includes('cartão') || p.includes('pix') || p.includes('dinheiro') || p.includes('recebimento')) {
       return res.status(200).json(sanitizeData({
-        tipo_operacao: "SELECT",
-        sql_validacao: "",
-        sql_final: \-- Relatório de Faturamento Agrupado por Forma de Pagamento
+        tipo_operacao: 'SELECT',
+        sql_validacao: '',
+        sql_final: `-- Relatorio de Faturamento Agrupado por Forma de Pagamento
 SELECT 
     fp.descricao AS forma_pagamento,
     COUNT(DISTINCT v.id) AS quantidade_vendas,
@@ -191,18 +176,18 @@ WHERE v.deleted_at IS NULL
   AND v.empresa_id = 1
   AND v.status = 'FINALIZADA'
 GROUP BY fp.id, fp.descricao
-ORDER BY total_faturado DESC;\,
+ORDER BY total_faturado DESC;`,
         tabelas_utilizadas: ['venda', 'financeiro_parcela', 'forma_pagamento'],
-        explicacao: 'Relatório consolidado de faturamento agrupado por forma de pagamento (PIX, Cartões, Dinheiro, Boleto), calculando total faturado, quantidade de vendas e ticket médio com filtros padrão do Softcomshop.'
+        explicacao: 'Relatorio consolidado de faturamento agrupado por forma de pagamento (PIX, Cartoes, Dinheiro, Boleto), calculando total faturado, quantidade de vendas e ticket medio com filtros padrao do Softcomshop.'
       }));
     }
 
-    // 4. CONTAS A RECEBER / INADIMPLÊNCIA
-    if (p.includes('receber') || p.includes('inadimpl') || p.includes('cobranc') || p.includes('cobranç') || p.includes('duplicata')) {
+    // 4. CONTAS A RECEBER
+    if (p.includes('receber') || p.includes('inadimpl') || p.includes('cobranc') || p.includes('duplicata')) {
       return res.status(200).json(sanitizeData({
-        tipo_operacao: "SELECT",
-        sql_validacao: "",
-        sql_final: \-- Relatório de Contas a Receber / Inadimplência
+        tipo_operacao: 'SELECT',
+        sql_validacao: '',
+        sql_final: `-- Relatorio de Contas a Receber / Inadimplencia
 SELECT 
     c.id AS cliente_id,
     c.nome_razao_social AS cliente_nome,
@@ -219,18 +204,18 @@ INNER JOIN cliente c ON cr.cliente_id = c.id
 WHERE cr.deleted_at IS NULL 
   AND cr.empresa_id = 1
   AND cr.status = 'ABERTO'
-ORDER BY cr.data_vencimento ASC;\,
+ORDER BY cr.data_vencimento ASC;`,
         tabelas_utilizadas: ['contas_receber', 'cliente'],
-        explicacao: 'Consulta analítica de títulos a receber com status em aberto, calculando dias de atraso e dados do cliente para cobrança.'
+        explicacao: 'Consulta analitica de titulos a receber com status em aberto, calculando dias de atraso e dados do cliente para cobranca.'
       }));
     }
 
-    // 5. CONTAS A PAGAR / FORNECEDORES
+    // 5. CONTAS A PAGAR
     if (p.includes('pagar') || p.includes('fornecedor') || p.includes('despesa')) {
       return res.status(200).json(sanitizeData({
-        tipo_operacao: "SELECT",
-        sql_validacao: "",
-        sql_final: \-- Relatório de Contas a Pagar por Fornecedor
+        tipo_operacao: 'SELECT',
+        sql_validacao: '',
+        sql_final: `-- Relatorio de Contas a Pagar por Fornecedor
 SELECT 
     f.id AS fornecedor_id,
     f.razao_social AS fornecedor,
@@ -244,18 +229,18 @@ FROM contas_pagar cp
 INNER JOIN fornecedor f ON cp.fornecedor_id = f.id
 WHERE cp.deleted_at IS NULL 
   AND cp.empresa_id = 1
-ORDER BY cp.data_vencimento ASC;\,
+ORDER BY cp.data_vencimento ASC;`,
         tabelas_utilizadas: ['contas_pagar', 'fornecedor'],
-        explicacao: 'Consulta analítica de obrigações financeiras a pagar vinculadas aos seus respectivos fornecedores com data de vencimento e status.'
+        explicacao: 'Consulta analitica de obrigacoes financeiras a pagar vinculadas aos seus respectivos fornecedores com data de vencimento e status.'
       }));
     }
 
-    // 6. ESTOQUE CRÍTICO / RUPTURA / ABAIXO DO MÍNIMO
-    if (p.includes('ruptura') || p.includes('minimo') || p.includes('mínimo') || (p.includes('estoqu') && (p.includes('baixo') || p.includes('falta') || p.includes('critico') || p.includes('crítico') || p.includes('zerad')))) {
+    // 6. ESTOQUE CRITICO / RUPTURA
+    if (p.includes('ruptura') || p.includes('minimo') || (p.includes('estoqu') && (p.includes('baixo') || p.includes('falta') || p.includes('critico') || p.includes('zerad')))) {
       return res.status(200).json(sanitizeData({
-        tipo_operacao: "SELECT",
-        sql_validacao: "",
-        sql_final: \-- Relatório de Produtos com Estoque Abaixo do Mínimo (Ruptura)
+        tipo_operacao: 'SELECT',
+        sql_validacao: '',
+        sql_final: `-- Relatorio de Produtos com Estoque Abaixo do Minimo (Ruptura)
 SELECT 
     p.id AS produto_id,
     p.nome AS produto_nome,
@@ -274,18 +259,18 @@ WHERE pe.empresa_id = 1
   AND peg.estoque <= peg.estoque_minimo
   AND peg.deleted_at IS NULL
   AND p.deleted_at IS NULL
-ORDER BY (peg.estoque_minimo - peg.estoque) DESC;\,
+ORDER BY (peg.estoque_minimo - peg.estoque) DESC;`,
         tabelas_utilizadas: ['produto', 'produto_empresa', 'produto_empresa_grade', 'fornecedor'],
-        explicacao: 'Identificação de itens em ruptura ou estoque crítico por filial (\produto_empresa_grade\), calculando a sugestão de compra para reposição.'
+        explicacao: 'Identificacao de itens em ruptura ou estoque critico por filial (produto_empresa_grade), calculando a sugestao de compra para reposicao.'
       }));
     }
 
-    // 7. CURVA ABC / PRODUTOS MAIS VENDIDOS / RANKING
+    // 7. CURVA ABC / MAIS VENDIDOS
     if (p.includes('abc') || p.includes('mais vendid') || p.includes('ranking') || p.includes('top produt') || p.includes('campeoes')) {
       return res.status(200).json(sanitizeData({
-        tipo_operacao: "SELECT",
-        sql_validacao: "",
-        sql_final: \-- Relatório de Ranking / Curva ABC de Produtos Mais Vendidos
+        tipo_operacao: 'SELECT',
+        sql_validacao: '',
+        sql_final: `-- Relatorio de Ranking / Curva ABC de Produtos Mais Vendidos
 SELECT 
     p.id AS produto_id,
     p.nome AS produto_nome,
@@ -302,18 +287,18 @@ WHERE v.deleted_at IS NULL
   AND v.empresa_id = 1
 GROUP BY p.id, p.nome, p.referencia
 ORDER BY faturamento_liquido DESC
-LIMIT 20;\,
+LIMIT 20;`,
         tabelas_utilizadas: ['venda', 'venda_item', 'produto'],
-        explicacao: 'Ranking dos 20 produtos de maior faturamento líquido e volume de vendas, com base no histórico de vendas finalizadas do sistema.'
+        explicacao: 'Ranking dos 20 produtos de maior faturamento liquido e volume de vendas, com base no historico de vendas finalizadas do sistema.'
       }));
     }
 
-    // 8. CLIENTES / LIMITES DE CRÉDITO
-    if (p.includes('client') || p.includes('limite') || p.includes('bloqueio') || p.includes('crediario') || p.includes('crediário')) {
+    // 8. CLIENTES / LIMITES
+    if (p.includes('client') || p.includes('limite') || p.includes('bloqueio') || p.includes('crediario')) {
       return res.status(200).json(sanitizeData({
-        tipo_operacao: "SELECT",
-        sql_validacao: "",
-        sql_final: \-- Relatório Geral de Clientes, Limites e Status
+        tipo_operacao: 'SELECT',
+        sql_validacao: '',
+        sql_final: `-- Relatorio Geral de Clientes, Limites e Status
 SELECT 
     c.id AS cliente_id,
     c.nome_razao_social AS cliente_nome,
@@ -328,18 +313,18 @@ FROM cliente c
 WHERE c.deleted_at IS NULL 
   AND c.empresa_id = 1
 ORDER BY c.nome_razao_social ASC
-LIMIT 50;\,
+LIMIT 50;`,
         tabelas_utilizadas: ['cliente'],
-        explicacao: 'Consulta de base de clientes cadastrados, limites de crédito disponíveis e status de bloqueio comercial.'
+        explicacao: 'Consulta de base de clientes cadastrados, limites de credito disponiveis e status de bloqueio comercial.'
       }));
     }
 
-    // 9. NFSE / NOTA FISCAL DE SERVIÇO / RPS / ISSQN
-    if (p.includes('nfse') || p.includes('nfs-e') || p.includes('servico') || p.includes('serviço') || p.includes('rps') || p.includes('issqn') || p.includes('tomador')) {
+    // 9. NFSE / SERVICOS
+    if (p.includes('nfse') || p.includes('nfs-e') || p.includes('servico') || p.includes('rps') || p.includes('issqn') || p.includes('tomador')) {
       return res.status(200).json(sanitizeData({
-        tipo_operacao: "SELECT",
-        sql_validacao: "",
-        sql_final: \-- Consulta Analítica Completa de NFSe (Nota Fiscal de Serviços Eletrônica)
+        tipo_operacao: 'SELECT',
+        sql_validacao: '',
+        sql_final: `-- Consulta Analitica Completa de NFSe (Nota Fiscal de Servicos Eletronica)
 SELECT 
     nfse.id AS nfse_id,
     nfse.numero_rps,
@@ -358,31 +343,25 @@ LEFT JOIN nota_fiscal_servico_eletronica_item item ON item.nfse_id = nfse.id
 WHERE nfse.deleted_at IS NULL 
   AND nfse.empresa_id = 1
 ORDER BY nfse.id DESC
-LIMIT 50;\,
+LIMIT 50;`,
         tabelas_utilizadas: [
-          "nota_fiscal_servico_eletronica",
-          "nota_fiscal_servico_eletronica_item",
-          "nota_fiscal_servico_eletronica_tomador",
-          "nfse_aliquota_padrao",
-          "nfse_codigo_servico_item",
-          "contrato_servico"
+          'nota_fiscal_servico_eletronica',
+          'nota_fiscal_servico_eletronica_item',
+          'nota_fiscal_servico_eletronica_tomador',
+          'nfse_aliquota_padrao',
+          'nfse_codigo_servico_item',
+          'contrato_servico'
         ],
-        explicacao: 'Identificamos todas as tabelas oficiais do módulo de NFSe no schema: \
-ota_fiscal_servico_eletronica\ (cabeçalho/RPS), \
-ota_fiscal_servico_eletronica_item\ (itens e alíquotas de ISS), \
-ota_fiscal_servico_eletronica_tomador\ (dados do tomador), \
-fse_aliquota_padrao\, \
-fse_codigo_servico_item\, \
-fse_serie\ e vínculos com \contrato_servico\.'
+        explicacao: 'Identificamos todas as tabelas oficiais do modulo de NFSe no schema: nota_fiscal_servico_eletronica (cabecalho/RPS), nota_fiscal_servico_eletronica_item (itens e aliquotas de ISS), nota_fiscal_servico_eletronica_tomador (dados do tomador).'
       }));
     }
 
-    // 10. MARKETPLACE / INTEGRAÇÕES / IFOOD / DELIVERY
+    // 10. MARKETPLACE / DELIVERY / IFOOD
     if (p.includes('market') || p.includes('ifood') || p.includes('delivery') || p.includes('integrac') || p.includes('ecom')) {
       return res.status(200).json(sanitizeData({
-        tipo_operacao: "SELECT",
-        sql_validacao: "",
-        sql_final: \-- Consulta Analítica Completa de Integração com Marketplaces
+        tipo_operacao: 'SELECT',
+        sql_validacao: '',
+        sql_final: `-- Consulta Analitica Completa de Integracao com Marketplaces
 SELECT 
     v.id AS venda_id,
     v.api_data_hora_venda AS data_venda,
@@ -401,18 +380,18 @@ WHERE v.deleted_at IS NULL
   AND v.empresa_id = 1
   AND (v.origem_venda LIKE '%MARKETPLACE%' OR v.marketplace_pedido_id IS NOT NULL OR v.api_app_name IS NOT NULL)
 ORDER BY v.id DESC
-LIMIT 50;\,
+LIMIT 50;`,
         tabelas_utilizadas: ['venda', 'marketplace_pedido', 'marketplace_vinculado', 'marketplace_config', 'produto_marketplace'],
-        explicacao: 'Identificamos todas as tabelas oficiais do módulo de Marketplace no schema: \marketplace_pedido\, \marketplace_vinculado\, \marketplace_config\, \marketplace_produto\, \marketplace_categoria\ e os vínculos diretos na tabela \enda\ (\pi_app_name\, \marketplace_pedido_id\, \origem_venda\). A consulta acima cruza os pedidos de venda com os registros de integração externa.'
+        explicacao: 'Identificamos todas as tabelas oficiais do modulo de Marketplace no schema: marketplace_pedido, marketplace_vinculado, marketplace_config, marketplace_produto, marketplace_categoria e os vinculos diretos na tabela venda.'
       }));
     }
 
-    // 11. CONTINGÊNCIA SEFAZ / NOTA FISCAL ELETRÔNICA
+    // 11. CONTINGENCIA SEFAZ
     if (p.includes('conting') || p.includes('rejei') || (p.includes('erro') && p.includes('nota'))) {
       return res.status(200).json(sanitizeData({
-        tipo_operacao: "SELECT",
-        sql_validacao: "",
-        sql_final: \SELECT 
+        tipo_operacao: 'SELECT',
+        sql_validacao: '',
+        sql_final: `SELECT 
     v.id AS venda_id,
     v.valor_total AS total_venda,
     v.total_pagamento AS total_pago_venda,
@@ -427,18 +406,18 @@ INNER JOIN nota_fiscal_eletronica nfe ON v.nfe_id = nfe.id
 LEFT JOIN financeiro_parcela fp ON fp.venda_id = v.id AND fp.deleted_at IS NULL
 WHERE nfe.recibo_situacao = 'CONTINGENCIA'
 GROUP BY v.id, v.valor_total, v.total_pagamento, nfe.id, nfe.numero_nfe, nfe.recibo_situacao, nfe.mensagem_erro
-ORDER BY v.id DESC;\,
+ORDER BY v.id DESC;`,
         tabelas_utilizadas: ['venda', 'nota_fiscal_eletronica', 'financeiro_parcela'],
-        explicacao: 'Consulta com cruzamento analítico entre vendas e documentos em contingência com cálculo de diferenças.'
+        explicacao: 'Consulta com cruzamento analitico entre vendas e documentos em contingencia com calculo de diferencas.'
       }));
     }
 
-    // 12. CAIXA / TURNOS DE OPERADORES
+    // 12. CAIXA / TURNOS
     if (p.includes('caixa') || p.includes('turno') || p.includes('sangria') || p.includes('suprimento')) {
       return res.status(200).json(sanitizeData({
-        tipo_operacao: "SELECT",
-        sql_validacao: "",
-        sql_final: \-- Relatório de Controle de Turnos e Caixas de Operadores
+        tipo_operacao: 'SELECT',
+        sql_validacao: '',
+        sql_final: `-- Relatorio de Controle de Turnos e Caixas de Operadores
 SELECT 
     c.id AS caixa_id,
     c.descricao AS nome_caixa,
@@ -457,7 +436,7 @@ INNER JOIN usuario u ON t.usuario_id = u.id
 WHERE t.deleted_at IS NULL 
   AND c.empresa_id = 1
 ORDER BY t.data_abertura DESC
-LIMIT 20;\,
+LIMIT 20;`,
         tabelas_utilizadas: ['caixa', 'caixa_turno', 'usuario'],
         explicacao: 'Auditoria completa de abertura, sangrias, suprimentos e fechamento de turnos dos operadores de caixa.'
       }));
@@ -466,9 +445,9 @@ LIMIT 20;\,
     // 13. RESTAURANTE / MESAS
     if (p.includes('restauran') || p.includes('mesa') || p.includes('comanda')) {
       return res.status(200).json(sanitizeData({
-        tipo_operacao: "SELECT",
-        sql_validacao: "",
-        sql_final: \-- Monitoramento de Mesas e Comandas do Restaurante
+        tipo_operacao: 'SELECT',
+        sql_validacao: '',
+        sql_final: `-- Monitoramento de Mesas e Comandas do Restaurante
 SELECT 
     rm.id AS mesa_id,
     rm.numero_mesa,
@@ -481,17 +460,17 @@ FROM restaurante_mesa rm
 LEFT JOIN usuario u ON rm.garcom_usuario_id = u.id
 WHERE rm.deleted_at IS NULL 
   AND rm.empresa_id = 1
-ORDER BY rm.numero_mesa ASC;\,
+ORDER BY rm.numero_mesa ASC;`,
         tabelas_utilizadas: ['restaurante_mesa', 'usuario'],
-        explicacao: 'Visão operacional do módulo de restaurante com status de mesas ocupadas/livres e consumo em tempo real.'
+        explicacao: 'Visao operacional do modulo de restaurante com status de mesas ocupadas/livres e consumo em tempo real.'
       }));
     }
 
-    // Resposta padrão analítica de vendas
+    // Resposta padrao
     return res.status(200).json(sanitizeData({
-      tipo_operacao: "SELECT",
-      sql_validacao: "",
-      sql_final: \SELECT 
+      tipo_operacao: 'SELECT',
+      sql_validacao: '',
+      sql_final: `SELECT 
     v.id AS venda_id, 
     v.api_data_hora_venda AS data_venda, 
     v.status, 
@@ -501,24 +480,24 @@ ORDER BY rm.numero_mesa ASC;\,
 FROM venda v
 WHERE v.deleted_at IS NULL AND v.empresa_id = 1
 ORDER BY v.id DESC
-LIMIT 10;\,
+LIMIT 10;`,
       tabelas_utilizadas: ['venda'],
-      explicacao: 'Consulta base com as últimas vendas registradas aplicando filtros recomendados de empresa e exclusão lógica.'
+      explicacao: 'Consulta base com as ultimas vendas registradas aplicando filtros recomendados de empresa e exclusao logica.'
     }));
   } catch (fatalErr) {
     console.error('Fatal API Error:', fatalErr);
     return res.status(200).json({
-      tipo_operacao: "SELECT",
-      sql_validacao: "",
-      sql_final: "SELECT v.id, v.api_data_hora_venda, v.status, v.valor_total FROM venda v WHERE v.deleted_at IS NULL AND v.empresa_id = 1 ORDER BY v.id DESC LIMIT 10;",
-      tabelas_utilizadas: ["venda"],
-      explicacao: "Consulta de contingência executada com segurança."
+      tipo_operacao: 'SELECT',
+      sql_validacao: '',
+      sql_final: 'SELECT v.id, v.api_data_hora_venda, v.status, v.valor_total FROM venda v WHERE v.deleted_at IS NULL AND v.empresa_id = 1 ORDER BY v.id DESC LIMIT 10;',
+      tabelas_utilizadas: ['venda'],
+      explicacao: 'Consulta de contingencia executada com seguranca.'
     });
   }
 };
 
 function sanitizeData(obj) {
-  if (!obj || typeof obj !== 'object') return { error: "Erro de processamento" };
+  if (!obj || typeof obj !== 'object') return { error: 'Erro de processamento' };
   const allowed = ['tipo_operacao', 'sql_validacao', 'sql_final', 'sql', 'tabelas_utilizadas', 'explicacao', 'message'];
   const clean = {};
   
