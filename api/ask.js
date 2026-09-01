@@ -8,7 +8,7 @@ function checkRateLimit(ip) {
   const now = Date.now();
   let timestamps = apiRateLimits.get(ip) || [];
   timestamps = timestamps.filter(t => now - t < 60000);
-  if (timestamps.length >= 30) {
+  if (timestamps.length >= 60) {
     return false;
   }
   timestamps.push(now);
@@ -16,7 +16,24 @@ function checkRateLimit(ip) {
   return true;
 }
 
-module.exports = async function handler(req, res) {
+module.exports = async (req, res) => {
+  // Configurar CORS e cabeçalhos defensivos
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
+
   try {
     const forwarded = req.headers['x-forwarded-for'];
     const clientIP = forwarded ? forwarded.split(',')[0].trim() : (req.headers['x-real-ip'] || req.socket?.remoteAddress || '127.0.0.1');
@@ -26,18 +43,18 @@ module.exports = async function handler(req, res) {
       return res.status(429).json({ error: 'Muitas requisições. Aguarde 1 minuto.' });
     }
 
-    // Headers Defensivos de Cyber Segurança (OWASP Standard)
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('X-Frame-Options', 'DENY');
-    res.setHeader('Referrer-Policy', 'no-referrer');
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
-
-    if (req.method !== 'POST') {
-      return res.status(405).json({ error: 'Method Not Allowed' });
+    // Parse defensivo de body (string ou objeto)
+    let body = req.body;
+    if (typeof body === 'string') {
+      try {
+        body = JSON.parse(body);
+      } catch (e) {
+        body = {};
+      }
+    } else if (!body) {
+      body = {};
     }
 
-    // Defesa de Tamanho de Entrada (Input Validation)
-    const body = req.body || {};
     const rawMessage = typeof body.message === 'string' ? body.message : '';
     const message = rawMessage.slice(0, 1500).trim();
     const activeKey = body.apiKey || process.env.GEMINI_API_KEY;
@@ -493,7 +510,7 @@ LIMIT 10;\,
     return res.status(200).json({
       tipo_operacao: "SELECT",
       sql_validacao: "",
-      sql_final: \SELECT v.id, v.api_data_hora_venda, v.status, v.valor_total FROM venda v WHERE v.deleted_at IS NULL AND v.empresa_id = 1 ORDER BY v.id DESC LIMIT 10;\,
+      sql_final: "SELECT v.id, v.api_data_hora_venda, v.status, v.valor_total FROM venda v WHERE v.deleted_at IS NULL AND v.empresa_id = 1 ORDER BY v.id DESC LIMIT 10;",
       tabelas_utilizadas: ["venda"],
       explicacao: "Consulta de contingência executada com segurança."
     });
