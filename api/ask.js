@@ -274,6 +274,25 @@ function generateSoftshopFallback(message, isQuotaExhausted) {
     quota_exhausted: !!isQuotaExhausted
   };
 
+  // 1. LOTE E SERIAL NO SOFTSHOP DESKTOP
+  if (p.includes("lote") || p.includes("serial") || p.includes("serie") || p.includes("rastre")) {
+    return {
+      tipo_operacao: "INFO",
+      tabelas_utilizadas: [
+        "[Serial_Estoque]",
+        "[Serial_Ajustes]",
+        "[Serial_Balanco]",
+        "[Cadastro de Mercadorias]",
+        "[Vendas Efetuadas]",
+        "[Empresa]"
+      ],
+      explicacao: "No **Softshop Desktop (SQL Server)**, o controle de serial e lote é gerenciado pelas tabelas:\n\n• **`[Serial_Estoque]`**: Tabela principal de saldo e rastreio individual de cada Serial em estoque;\n• **`[Serial_Ajustes]`** e **`[Serial_Balanco]`**: Histórico de movimentações, ajustes e balanço de seriais;\n• **`[Vendas Efetuadas]`**: Registra o serial faturado nas colunas `[Serial]`, `[Serial_Fabricacao]`, `[Serial_Validade]`;\n• **`[Cadastro de Mercadorias]`**: Possui o campo `[SolicitarSerial]` (bit) que define se o produto exige serial na venda/entrada;\n• **`[Empresa]`**: Configurações globais `[AtivarLoteSerial]`, `[BaixarLote]` e `[BloquearEstoqueSerial]`.",
+      sql_validacao: null,
+      sql_final: null,
+      usage: usage
+    };
+  }
+
   if (p.includes("delet") || p.includes("cancel") || p.includes("exclui") || p.includes("apag")) {
     return {
       tipo_operacao: "DELETE",
