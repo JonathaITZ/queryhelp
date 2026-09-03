@@ -133,10 +133,10 @@
     <div id="app-view" class="min-h-screen flex-col hidden">
         <!-- Header Minimalista com Monitor de Tokens -->
         <header class="border-b border-borderBase px-3 sm:px-6 py-2 sm:py-2.5 bg-bgApp/95 sticky top-0 z-40 backdrop-blur-md">
-            <div class="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-2 sm:gap-2.5">
+            <div class="w-full flex flex-col md:grid md:grid-cols-3 md:items-center gap-2 sm:gap-2.5">
                 
-                <!-- Linha 1 no Mobile (Logo e Botões de Ação Rápidos) / Lado Esquerdo no Desktop -->
-                <div class="flex items-center justify-between w-full md:w-auto">
+                <!-- 1. Coluna Esquerda: Logo e Branding -->
+                <div class="flex items-center justify-between w-full md:justify-start">
                     <a href="/" onclick="goHome(event)" class="flex items-center gap-2 sm:gap-3 cursor-pointer group hover:opacity-95 transition-all select-none" title="Voltar para a Página Inicial">
                         <img src="logo.jpg" alt="Logo" class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg object-cover border border-white/10 shadow-sm shrink-0 group-hover:scale-105 group-hover:border-amber-500/50 transition-all duration-200" />
                         <div class="flex items-center gap-1.5 sm:gap-2">
@@ -148,44 +148,40 @@
 
                     <!-- Botões Rápidos Exclusivos do Mobile (Visíveis apenas em telas < md) -->
                     <div class="flex items-center gap-1 md:hidden">
-                        <!-- Monitor de Tokens Compacto Mobile -->
                         <button onclick="openTokenMonitorModal()" class="text-xs text-slate-300 hover:text-white px-2 py-1 rounded-lg bg-cardBg border border-borderBase transition flex items-center gap-1.5" title="Monitor de Tokens">
                             <i class="fa-solid fa-gauge-high text-amber-400 text-[10px]"></i>
                             <span id="header-token-count-mobile" class="text-[10px] font-mono text-emerald-400 font-semibold">0 tkn</span>
                         </button>
-                        <!-- Chave Mobile -->
                         <button onclick="openApiKeyModal()" class="text-slate-300 hover:text-white p-1.5 rounded-lg bg-cardBg border border-borderBase transition" title="Chave API Gemini">
                             <i class="fa-solid fa-key text-[10px] text-slate-400"></i>
                         </button>
-                        <!-- Nova Conversa Mobile -->
                         <button onclick="clearChat()" class="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-white/5 transition" title="Nova Conversa">
                             <i class="fa-solid fa-arrow-rotate-right text-[10px]"></i>
                         </button>
-                        <!-- Sair Mobile -->
                         <button onclick="handleLogout()" class="text-red-400 hover:text-red-300 p-1.5 rounded-lg bg-red-950/20 border border-red-500/20 transition" title="Sair">
                             <i class="fa-solid fa-arrow-right-from-bracket text-[10px]"></i>
                         </button>
                     </div>
                 </div>
 
-                <!-- Seletor de Sistema: Softcomshop (Web) & Softshop (Desktop) -->
-                <!-- No Mobile ocupa largura total com botões confortáveis de tocar (50% cada) -->
-                <!-- No Desktop fica centralizado de forma elegante -->
-                <div class="w-full md:w-auto flex items-center bg-[#0d1017] p-1 rounded-xl border border-borderBase shadow-inner">
-                    <button id="tab-softcomshop" onclick="switchSystem('softcomshop')" class="flex-1 md:flex-initial px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 bg-amber-500/15 text-amber-300 border border-amber-500/30">
-                        <i class="fa-solid fa-cloud text-[11px]"></i>
-                        <span>Softcomshop</span>
-                        <span class="text-[9px] bg-amber-500/20 text-amber-200 px-1 py-0.2 rounded font-mono">Web</span>
-                    </button>
-                    <button id="tab-softshop" onclick="switchSystem('softshop')" class="flex-1 md:flex-initial px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 transition flex items-center justify-center gap-1.5">
-                        <i class="fa-solid fa-desktop text-[11px]"></i>
-                        <span>Softshop</span>
-                        <span class="text-[9px] bg-cyan-950/50 text-cyan-400 border border-cyan-500/30 px-1 py-0.2 rounded font-mono">Desktop</span>
-                    </button>
+                <!-- 2. Coluna Central: Abas Softcomshop e Softshop (100% CENTRALIZADO!) -->
+                <div class="flex justify-center items-center w-full">
+                    <div class="inline-flex items-center bg-[#0d1017] p-1 rounded-xl border border-borderBase shadow-inner mx-auto">
+                        <button id="tab-softcomshop" onclick="switchSystem('softcomshop')" class="px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                            <i class="fa-solid fa-cloud text-[11px]"></i>
+                            <span>Softcomshop</span>
+                            <span class="text-[9px] bg-amber-500/20 text-amber-200 px-1 py-0.2 rounded font-mono">Web</span>
+                        </button>
+                        <button id="tab-softshop" onclick="switchSystem('softshop')" class="px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 transition flex items-center justify-center gap-1.5 border border-transparent">
+                            <i class="fa-solid fa-desktop text-[11px]"></i>
+                            <span>Softshop</span>
+                            <span class="text-[9px] bg-cyan-950/50 text-cyan-400 border border-cyan-500/30 px-1 py-0.2 rounded font-mono">Desktop</span>
+                        </button>
+                    </div>
                 </div>
 
-                <!-- Botões de Ação Completos para Desktop (md:flex) -->
-                <div class="hidden md:flex items-center gap-2">
+                <!-- 3. Coluna Direita: Ações do Desktop (Alinhados perfeitamente à Direita) -->
+                <div class="hidden md:flex items-center justify-end gap-2">
                     <span id="system-badge-subtitle" class="text-xs text-slate-400 hidden xl:inline-block">Softcomshop • 459 tabelas</span>
 
                     <!-- BOTÃO DO MONITOR DE TOKENS DESKTOP -->
@@ -451,13 +447,13 @@
             const badge = document.getElementById('system-badge-subtitle');
 
             if (sys === 'softshop') {
-                if (tabSoft) tabSoft.className = 'px-3 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 shadow-sm';
-                if (tabSoftcom) tabSoftcom.className = 'px-3 py-1 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 transition flex items-center gap-1.5 border border-transparent';
-                if (input) input.placeholder = 'Softshop Desktop: digite sua dúvida ou envie os dados de conexão/tabelas...';
-                if (badge) badge.innerHTML = '<span class="text-cyan-400 font-mono">Softshop Desktop</span> • Aguardando Conexão';
+                if (tabSoft) tabSoft.className = 'px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 shadow-sm';
+                if (tabSoftcom) tabSoftcom.className = 'px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 transition flex items-center justify-center gap-1.5 border border-transparent';
+                if (input) input.placeholder = 'Softshop Desktop: digite sua dúvida (vendas, mercadorias, contas a receber)...';
+                if (badge) badge.innerHTML = '<span class="text-cyan-400 font-mono">Softshop Desktop</span> • 642 tabelas (SQL Server)';
             } else {
-                if (tabSoftcom) tabSoftcom.className = 'px-3 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-sm';
-                if (tabSoft) tabSoft.className = 'px-3 py-1 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 transition flex items-center gap-1.5 border border-transparent';
+                if (tabSoftcom) tabSoftcom.className = 'px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-sm';
+                if (tabSoft) tabSoft.className = 'px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 transition flex items-center justify-center gap-1.5 border border-transparent';
                 if (input) input.placeholder = 'Softcomshop: digite sua dúvida ou o que deseja consultar...';
                 if (badge) badge.innerHTML = 'Softcomshop • 459 tabelas (Web)';
             }
