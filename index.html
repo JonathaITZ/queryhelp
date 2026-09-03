@@ -2,52 +2,49 @@
 <html lang="pt-BR" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QueryHelp (BETA) • by Dantas</title>
-    
+    <link rel="icon" type="image/jpeg" href="logo.jpg">
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    
-    <!-- Tailwind CSS (CDN) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- FontAwesome (Icons) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
     <script>
         tailwind.config = {
             darkMode: 'class',
             theme: {
                 extend: {
                     fontFamily: {
-                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
-                        mono: ['"JetBrains Mono"', 'monospace'],
+                        sans: ['"Inter"', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace']
                     },
                     colors: {
-                        bgApp: '#0b0d13',
-                        cardBg: '#121620',
-                        borderBase: '#1e2433',
+                        bgApp: '#0c0e14',
+                        cardBg: '#131620',
+                        borderBase: 'rgba(255, 255, 255, 0.07)',
+                        borderHighlight: 'rgba(234, 179, 8, 0.3)',
+                        goldAccent: '#eab308'
                     }
                 }
             }
         }
     </script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         body {
-            background-color: #0b0d13;
+            background-color: #0c0e14;
             color: #e2e8f0;
         }
         .custom-scroll::-webkit-scrollbar {
-            width: 5px;
-            height: 5px;
+            width: 4px;
         }
         .custom-scroll::-webkit-scrollbar-track {
-            background: rgba(18, 22, 32, 0.5);
+            background: transparent;
         }
         .custom-scroll::-webkit-scrollbar-thumb {
-            background: #1e2433;
+            background: rgba(255, 255, 255, 0.1);
             border-radius: 4px;
         }
         .custom-scroll::-webkit-scrollbar-thumb:hover {
@@ -131,114 +128,43 @@
 
     <!-- APLICAÇÃO PRINCIPAL (Exibida após Login) -->
     <div id="app-view" class="min-h-screen flex-col hidden">
-        <!-- Header Minimalista com Monitor de Tokens -->
-        <header class="border-b border-borderBase px-3 sm:px-6 py-2 sm:py-2.5 bg-bgApp/95 sticky top-0 z-40 backdrop-blur-md">
-            <div class="w-full flex flex-col md:grid md:grid-cols-3 md:items-center gap-2 sm:gap-2.5">
-                
-                <!-- 1. Coluna Esquerda: Logo e Branding -->
-                <div class="flex items-center justify-between w-full md:justify-start">
-                    <a href="/" onclick="goHome(event)" class="flex items-center gap-2 sm:gap-3 cursor-pointer group hover:opacity-95 transition-all select-none" title="Voltar para a Página Inicial">
-                        <img src="logo.jpg" alt="Logo" class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg object-cover border border-white/10 shadow-sm shrink-0 group-hover:scale-105 group-hover:border-amber-500/50 transition-all duration-200" />
-                        <div class="flex items-center gap-1.5 sm:gap-2">
-                            <span class="text-xs sm:text-sm font-semibold text-white tracking-tight group-hover:text-amber-400 transition-colors">QueryHelp</span>
-                            <span class="text-[9px] sm:text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono">BETA</span>
-                            <span class="text-[10px] sm:text-[11px] text-amber-400/90 font-mono bg-amber-500/10 px-1.5 sm:px-2 py-0.5 rounded-full border border-amber-500/20">by Dantas</span>
-                        </div>
-                    </a>
-
-                    <!-- Botões Rápidos Exclusivos do Mobile (Visíveis apenas em telas < md) -->
-                    <div class="flex items-center gap-1 md:hidden">
-                        <button onclick="openTokenMonitorModal()" class="text-xs text-slate-300 hover:text-white px-2 py-1 rounded-lg bg-cardBg border border-borderBase transition flex items-center gap-1.5" title="Monitor de Tokens">
-                            <i class="fa-solid fa-gauge-high text-amber-400 text-[10px]"></i>
-                            <span id="header-token-count-mobile" class="text-[10px] font-mono text-emerald-400 font-semibold">0 tkn</span>
-                        </button>
-                        <button onclick="openApiKeyModal()" class="text-slate-300 hover:text-white p-1.5 rounded-lg bg-cardBg border border-borderBase transition" title="Chave API Gemini">
-                            <i class="fa-solid fa-key text-[10px] text-slate-400"></i>
-                        </button>
-                        <button onclick="clearChat()" class="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-white/5 transition" title="Nova Conversa">
-                            <i class="fa-solid fa-arrow-rotate-right text-[10px]"></i>
-                        </button>
-                        <button onclick="handleLogout()" class="text-red-400 hover:text-red-300 p-1.5 rounded-lg bg-red-950/20 border border-red-500/20 transition" title="Sair">
-                            <i class="fa-solid fa-arrow-right-from-bracket text-[10px]"></i>
-                        </button>
-                    </div>
+        <!-- Header Minimalista e Seguro -->
+        <header class="border-b border-borderBase px-6 py-3.5 bg-bgApp/90 sticky top-0 z-40 backdrop-blur-md flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <img src="logo.jpg" alt="Logo" class="w-8 h-8 rounded-lg object-cover border border-white/10 shadow-sm" />
+                <div class="flex items-center gap-2">
+                    <span class="text-sm font-semibold text-white tracking-tight">QueryHelp</span>
+                    <span class="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono">BETA</span>
+                    <span class="text-[11px] text-amber-400/90 font-mono bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">by Dantas</span>
                 </div>
+            </div>
 
-                <!-- 2. Coluna Central: Abas Softcomshop e Softshop (100% CENTRALIZADO!) -->
-                <div class="flex justify-center items-center w-full">
-                    <div class="inline-flex items-center bg-[#0d1017] p-1 rounded-xl border border-borderBase shadow-inner mx-auto">
-                        <button id="tab-softcomshop" onclick="switchSystem('softcomshop')" class="px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 bg-amber-500/15 text-amber-300 border border-amber-500/30">
-                            <i class="fa-solid fa-cloud text-[11px]"></i>
-                            <span>Softcomshop</span>
-                            <span class="text-[9px] bg-amber-500/20 text-amber-200 px-1 py-0.2 rounded font-mono">Web</span>
-                        </button>
-                        <button id="tab-softshop" onclick="switchSystem('softshop')" class="px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 transition flex items-center justify-center gap-1.5 border border-transparent">
-                            <i class="fa-solid fa-computer text-[11px]"></i>
-                            <span>Softshop</span>
-                            <span class="text-[9px] bg-cyan-950/50 text-cyan-400 border border-cyan-500/30 px-1 py-0.2 rounded font-mono">Desktop</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- 3. Coluna Direita: Ações do Desktop (Alinhados perfeitamente à Direita) -->
-                <div class="hidden md:flex items-center justify-end gap-2">
-                    <span id="system-badge-subtitle" class="text-xs text-slate-400 hidden xl:inline-block">Softcomshop • 459 tabelas</span>
-
-                    <!-- BOTÃO DO MONITOR DE TOKENS DESKTOP -->
-                    <button onclick="openTokenMonitorModal()" class="text-xs text-slate-300 hover:text-white px-3 py-1.5 rounded-lg bg-cardBg hover:bg-white/5 border border-borderBase transition flex items-center gap-2 group" title="Monitor de Tokens e Cota da IA">
-                        <i class="fa-solid fa-gauge-high text-amber-400 text-[11px] group-hover:rotate-12 transition-transform"></i>
-                        <span class="font-medium">Monitor de Tokens</span>
-                        <span id="header-token-badge" class="flex items-center gap-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded text-[10px] font-mono">
-                            <span id="header-token-dot" class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                            <span id="header-token-count">0 tkn</span>
-                        </span>
-                    </button>
-
-                    <!-- BOTÃO VER FEEDBACKS DESKTOP -->
-                    <button onclick="openFeedbackListModal()" class="text-xs text-slate-300 hover:text-white px-2.5 py-1.5 rounded-lg bg-cardBg hover:bg-white/5 border border-borderBase transition flex items-center gap-1.5" title="Ver Feedbacks e Relatórios de Erro Salvos">
-                        <i class="fa-solid fa-flag text-amber-400 text-[10px]"></i>
-                        <span class="hidden lg:inline font-medium">Feedbacks</span>
-                        <span id="header-feedback-badge" class="px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-mono">0</span>
-                    </button>
-
-                    <!-- BOTÃO API KEY DESKTOP -->
-                    <button onclick="openApiKeyModal()" class="text-xs text-slate-300 hover:text-white px-2.5 py-1.5 rounded-lg bg-cardBg hover:bg-white/5 border border-borderBase transition flex items-center gap-1.5" title="Chave de API Gemini">
-                        <i class="fa-solid fa-key text-slate-400 text-[10px]"></i>
-                        <span id="btn-api-text">Chave</span>
-                    </button>
-
-                    <!-- BOTÃO RESET CHAT DESKTOP -->
-                    <button onclick="clearChat()" title="Nova conversa" class="text-xs text-slate-400 hover:text-white p-2 rounded-lg hover:bg-white/5 transition">
-                        <i class="fa-solid fa-arrow-rotate-right text-[11px]"></i>
-                    </button>
-
-                    <!-- BOTÃO SAIR DESKTOP -->
-                    <button onclick="handleLogout()" title="Sair do sistema" class="text-xs text-red-400 hover:text-red-300 px-2.5 py-1.5 rounded-lg bg-red-950/20 hover:bg-red-950/40 border border-red-500/20 transition flex items-center gap-1.5">
-                        <i class="fa-solid fa-arrow-right-from-bracket text-[10px]"></i>
-                        <span>Sair</span>
-                    </button>
-                </div>
+            <div class="flex items-center gap-3">
+                <span class="text-xs text-slate-400 hidden sm:inline-block">Softcomshop • 459 tabelas</span>
+                <button onclick="openApiKeyModal()" class="text-xs text-slate-300 hover:text-white px-3 py-1.5 rounded-lg bg-cardBg hover:bg-white/5 border border-borderBase transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-shield-halved text-emerald-400 text-[10px]"></i>
+                    <span id="btn-api-text">API Gemini</span>
+                </button>
+                <button onclick="clearChat()" title="Nova conversa" class="text-xs text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-white/5 transition">
+                    <i class="fa-solid fa-arrow-rotate-right text-[11px]"></i>
+                </button>
+                <button onclick="handleLogout()" title="Sair do sistema" class="text-xs text-red-400 hover:text-red-300 px-2.5 py-1.5 rounded-lg bg-red-950/20 hover:bg-red-950/40 border border-red-500/20 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-arrow-right-from-bracket text-[10px]"></i>
+                    <span>Sair</span>
+                </button>
             </div>
         </header>
 
         <!-- Área Principal de Chat -->
-        <main class="flex-1 flex flex-col max-w-3xl w-full mx-auto px-2.5 sm:px-4 py-3 sm:py-6 overflow-hidden">
+        <main class="flex-1 flex flex-col max-w-3xl w-full mx-auto px-4 py-6 overflow-hidden">
             <div id="chat-box" class="flex-1 overflow-y-auto space-y-6 custom-scroll pr-1 pb-6">
                 
                 <!-- Welcome Clean -->
-                <div id="welcome-card" class="text-center py-12 sm:py-14 px-4">
-                    <div class="w-16 h-16 rounded-2xl mx-auto mb-4 bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-400 shadow-xl shadow-amber-500/10 relative">
-                        <i class="fa-solid fa-globe text-3xl"></i>
-                        <span class="absolute -bottom-1 -right-1 bg-amber-500 text-slate-950 rounded-full w-5 h-5 flex items-center justify-center text-[10px] shadow-sm font-bold border-2 border-[#090b10]" title="Sistema Web na Nuvem">
-                            <i class="fa-solid fa-cloud text-[9px]"></i>
-                        </span>
-                    </div>
-                    <div class="flex items-center justify-center gap-2 mb-2">
-                        <h1 class="text-lg sm:text-xl font-bold text-white tracking-tight">Módulo <span class="text-amber-400 font-mono">Softcomshop Web</span></h1>
-                        <span class="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono">WEB</span>
-                    </div>
+                <div id="welcome-card" class="text-center py-16 px-4">
+                    <img src="logo.jpg" alt="Logo" class="w-16 h-16 rounded-2xl mx-auto mb-4 object-cover border border-white/10 shadow-lg" />
+                    <h1 class="text-xl font-semibold text-white mb-2 tracking-tight">Bem-vindo, <span class="text-amber-400 font-mono">Especialista</span>!</h1>
                     <p class="text-xs text-slate-400 max-w-md mx-auto leading-relaxed mb-6">
-                        Estrutura oficial de <strong>459 tabelas e 6.600 campos</strong> (MySQL Web). Consultas otimizadas com multi-empresa e exclusão lógica segura.
+                        Estrutura oficial de <strong>459 tabelas e 6.600 campos</strong> conectada no Supabase. Pergunte sobre consultas, exclusões ou atualizações com validação prévia.
                     </p>
 
                     <div class="flex flex-wrap justify-center gap-2 max-w-lg mx-auto">
@@ -260,7 +186,7 @@
             </div>
 
             <!-- Input Bar Clean -->
-            <div class="sticky bottom-0 bg-bgApp/95 backdrop-blur-md pt-1.5 pb-2 sm:pb-3 px-1 sm:px-0">
+            <div class="pt-2">
                 <form id="chat-form" onsubmit="sendMessage(event)" class="bg-cardBg rounded-xl border border-borderBase focus-within:border-amber-500/50 transition flex items-center p-1.5 shadow-lg">
                     <input 
                         type="text" 
@@ -283,349 +209,20 @@
         </main>
     </div>
 
-    <!-- MODAL MONITOR DE TOKENS & COTA DA IA -->
-    <div id="token-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-cardBg border border-borderBase rounded-2xl max-w-xl w-full p-4 sm:p-6 shadow-2xl relative custom-scroll max-h-[92vh] overflow-y-auto">
-            <!-- Glow Decorativo -->
-            <div class="absolute -top-10 -right-10 w-36 h-36 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
-
-            <!-- Header do Modal -->
-            <div class="flex items-center justify-between border-b border-borderBase/80 pb-4 mb-5">
-                <div class="flex items-center gap-3">
-                    <div class="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-                        <i class="fa-solid fa-gauge-high text-base"></i>
-                    </div>
-                    <div>
-                        <h2 class="text-sm font-bold text-white tracking-tight flex items-center gap-2">
-                            Monitor de IA & Consumo de Tokens
-                            <span class="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded font-mono">BETA</span>
-                        </h2>
-                        <p class="text-[11px] text-slate-400">Controle de consumo, limites e disponibilidade do modelo em produção</p>
-                    </div>
-                </div>
-                <button onclick="closeTokenMonitorModal()" class="text-slate-400 hover:text-white p-1 rounded-lg transition">
-                    <i class="fa-solid fa-xmark text-sm"></i>
-                </button>
-            </div>
-
-            <!-- Card de Status em Destaque (Ainda dá pra usar?) -->
-            <div id="token-status-banner" class="bg-emerald-950/20 border border-emerald-500/30 rounded-xl p-4 mb-5 flex items-start gap-3 transition">
-                <div id="token-status-icon" class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
-                    <i class="fa-solid fa-circle-check text-sm"></i>
-                </div>
-                <div class="flex-1">
-                    <div class="flex items-center justify-between">
-                        <h3 id="token-status-title" class="text-xs font-semibold text-emerald-300">IA Totalmente Disponível e Pronta</h3>
-                        <span id="token-status-pill" class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">ONLINE</span>
-                    </div>
-                    <p id="token-status-desc" class="text-[11px] text-slate-300 mt-1 leading-relaxed">
-                        A IA está respondendo normalmente dentro do limite de cota. Caso os tokens esgotem, o sistema entra automaticamente no motor Schema RAG Local (100% gratuito e ilimitado).
-                    </p>
-                </div>
-            </div>
-
-            <!-- Grid de Métricas Principais (3 Cards) -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
-                <!-- Card 1: Total de Tokens -->
-                <div class="bg-bgApp border border-borderBase rounded-xl p-3.5 flex flex-col justify-between">
-                    <div>
-                        <span class="text-[10px] font-medium text-slate-400 uppercase tracking-wider block mb-1">Tokens Totais</span>
-                        <div class="flex items-baseline gap-1.5">
-                            <span id="stat-total-tokens" class="text-lg font-bold font-mono text-white">0</span>
-                            <span class="text-[10px] text-slate-500 font-mono">/ 1M</span>
-                        </div>
-                    </div>
-                    <div class="mt-3">
-                        <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                            <div id="stat-token-progress" class="bg-amber-400 h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
-                        </div>
-                        <span id="stat-token-pct" class="text-[9px] text-slate-400 font-mono mt-1 block text-right">0.0% da cota diária</span>
-                    </div>
-                </div>
-
-                <!-- Card 2: Entrada vs Saída -->
-                <div class="bg-bgApp border border-borderBase rounded-xl p-3.5 flex flex-col justify-between">
-                    <div>
-                        <span class="text-[10px] font-medium text-slate-400 uppercase tracking-wider block mb-1">Divisão de Tokens</span>
-                        <div class="space-y-1 mt-1 text-[11px] font-mono">
-                            <div class="flex justify-between text-slate-300">
-                                <span class="text-slate-500">Prompt:</span>
-                                <span id="stat-prompt-tokens">0</span>
-                            </div>
-                            <div class="flex justify-between text-slate-300">
-                                <span class="text-slate-500">Resposta:</span>
-                                <span id="stat-completion-tokens">0</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="mt-2 text-[10px] text-slate-500">
-                        Média: <span id="stat-avg-tokens" class="text-slate-300 font-mono">0</span> tkn/query
-                    </div>
-                </div>
-
-                <!-- Card 3: Consultas Processadas -->
-                <div class="bg-bgApp border border-borderBase rounded-xl p-3.5 flex flex-col justify-between">
-                    <div>
-                        <span class="text-[10px] font-medium text-slate-400 uppercase tracking-wider block mb-1">Consultas na Sessão</span>
-                        <div class="text-lg font-bold font-mono text-white" id="stat-total-queries">0</div>
-                    </div>
-                    <div class="space-y-1 mt-2 text-[10px] font-mono">
-                        <div class="flex justify-between text-slate-300">
-                            <span class="text-emerald-400">Via IA Gemini:</span>
-                            <span id="stat-ai-queries">0</span>
-                        </div>
-                        <div class="flex justify-between text-slate-300">
-                            <span class="text-amber-400">Via Schema RAG:</span>
-                            <span id="stat-rag-queries">0</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Tabela: Histórico Recente de Consumo -->
-            <div class="mb-5">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="text-[11px] font-semibold text-slate-300 uppercase tracking-wider">Histórico Recente de Consumo</span>
-                    <span class="text-[10px] text-slate-500">Últimas 5 requisições</span>
-                </div>
-                <div class="border border-borderBase rounded-xl overflow-hidden bg-bgApp/50">
-                    <table class="w-full text-left text-[11px]">
-                        <thead class="bg-cardBg border-b border-borderBase text-[10px] font-medium text-slate-400 uppercase">
-                            <tr>
-                                <th class="py-2 px-3">Horário</th>
-                                <th class="py-2 px-3">Solicitação</th>
-                                <th class="py-2 px-3">Origem</th>
-                                <th class="py-2 px-3 text-right">Tokens</th>
-                            </tr>
-                        </thead>
-                        <tbody id="token-history-body" class="divide-y divide-borderBase/40 text-slate-300 font-mono">
-                            <tr>
-                                <td colspan="4" class="py-4 text-center text-slate-500 text-xs font-sans">
-                                    Nenhuma consulta realizada nesta sessão ainda.
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Ações e Botões de Controle -->
-            <div class="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-borderBase/80">
-                <div class="flex gap-2">
-                    <button onclick="testAiQuotaConnection()" id="btn-test-quota" class="text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">
-                        <i class="fa-solid fa-bolt text-[10px]"></i>
-                        <span>Verificar Cota Agora</span>
-                    </button>
-                    <button onclick="resetTokenSession()" class="text-xs text-slate-400 hover:text-white hover:bg-white/5 border border-borderBase px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">
-                        <i class="fa-solid fa-rotate-left text-[10px]"></i>
-                        <span>Zerar Contador</span>
-                    </button>
-                </div>
-                <button onclick="closeTokenMonitorModal(); openApiKeyModal();" class="text-xs bg-cardBg hover:bg-white/5 text-slate-300 hover:text-white border border-borderBase px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">
-                    <i class="fa-solid fa-key text-[10px] text-amber-400"></i>
-                    <span>Configurar Chave Própria</span>
-                </button>
-            </div>
-        </div>
-    </div>
-
-    
-    <!-- MODAL 1: REPORTAR ERRO NA CONSULTA GERADA -->
-    <div id="report-error-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 hidden z-50">
-        <div class="bg-cardBg border border-borderBase rounded-2xl p-4 sm:p-6 max-w-lg w-full shadow-2xl relative custom-scroll max-h-[92vh] overflow-y-auto">
-            <div class="flex items-center justify-between mb-3 border-b border-borderBase/60 pb-3">
-                <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 rounded-xl bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400 shrink-0">
-                        <i class="fa-solid fa-triangle-exclamation text-xs"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-sm font-bold text-white tracking-tight">Reportar Incoerência na Consulta</h3>
-                        <span class="text-[10px] text-slate-400">Salva no banco de dados para melhorias da equipe</span>
-                    </div>
-                </div>
-                <button onclick="closeReportErrorModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition">
-                    <i class="fa-solid fa-xmark text-xs"></i>
-                </button>
-            </div>
-
-            <form id="report-error-form" onsubmit="submitFeedbackReport(event)" class="space-y-3.5">
-                <!-- Info da Consulta -->
-                <div class="p-2.5 rounded-xl bg-bgApp border border-borderBase text-[11px] space-y-1.5">
-                    <div class="flex items-center justify-between">
-                        <span class="text-slate-500 font-medium">Módulo:</span>
-                        <span id="report-sys-badge" class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-amber-300">Softcomshop</span>
-                    </div>
-                    <div>
-                        <span class="text-slate-500 font-medium">Pergunta do Usuário:</span>
-                        <p id="report-prompt-text" class="text-slate-300 mt-0.5 font-normal italic line-clamp-2">Carregando...</p>
-                    </div>
-                    <div>
-                        <span class="text-slate-500 font-medium">SQL Gerado:</span>
-                        <pre id="report-sql-text" class="text-amber-300/90 font-mono text-[10px] bg-[#090b10] p-1.5 rounded mt-0.5 max-h-20 overflow-y-auto custom-scroll">Carregando...</pre>
-                    </div>
-                </div>
-
-                <!-- Categoria do Erro -->
-                <div>
-                    <label class="block text-[11px] font-semibold text-slate-300 uppercase tracking-wider mb-1">Qual o tipo de erro?</label>
-                    <select id="report-error-category" class="w-full bg-bgApp border border-borderBase focus:border-amber-500 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
-                        <option value="Tabela Incorreta">Tabela Incorreta (usou tabela errada)</option>
-                        <option value="Campo Inexistente ou Incorreto">Campo / Coluna Inexistente ou Incorreto</option>
-                        <option value="Regra de Negócio (Soft Delete, Empresa, Status)">Regra de Negócio (Soft Delete, Multi-Empresa, Status)</option>
-                        <option value="Erro de Sintaxe SQL / T-SQL">Erro de Sintaxe SQL / T-SQL</option>
-                        <option value="Sugestão / Outro">Sugestão de Melhoria / Outro</option>
-                    </select>
-                </div>
-
-                <!-- Detalhes do Erro -->
-                <div>
-                    <label class="block text-[11px] font-semibold text-slate-300 uppercase tracking-wider mb-1">O que está errado e como deveria ser?</label>
-                    <textarea 
-                        id="report-error-notes" 
-                        rows="3" 
-                        placeholder="Ex: 'Para faturamento do Softshop você deve usar [Cadastro de Vendas] e filtrar [Cancelada] = 0. A tabela usada não continha o total real...'"
-                        class="w-full bg-bgApp border border-borderBase focus:border-amber-500 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none resize-none"
-                        required
-                    ></textarea>
-                </div>
-
-                <!-- Feedback Visual de Sucesso/Erro -->
-                <div id="report-form-status" class="hidden text-xs p-2.5 rounded-xl text-center font-medium"></div>
-
-                <div class="flex justify-end gap-2 pt-2 border-t border-borderBase/60">
-                    <button type="button" onclick="closeReportErrorModal()" class="px-3.5 py-1.5 rounded-xl text-xs text-slate-400 hover:text-white transition">Cancelar</button>
-                    <button type="submit" id="btn-submit-report" class="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 transition shadow-lg shadow-amber-500/10 flex items-center gap-1.5">
-                        <i class="fa-solid fa-paper-plane text-[11px]"></i>
-                        <span>Salvar Feedback no Banco</span>
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- MODAL 2: ABA / LISTA DE FEEDBACKS SALVOS (PARA VER DEPOIS) -->
-    <div id="feedback-list-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 hidden z-50">
-        <div class="bg-cardBg border border-borderBase rounded-2xl p-4 sm:p-6 max-w-2xl w-full shadow-2xl relative custom-scroll max-h-[92vh] flex flex-col">
-            <div class="flex items-center justify-between mb-3 border-b border-borderBase/60 pb-3 shrink-0">
-                <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
-                        <i class="fa-solid fa-clipboard-list text-xs"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-sm font-bold text-white tracking-tight">Feedbacks e Relatórios de Erro Salvos</h3>
-                        <span class="text-[10px] text-slate-400">Gravados no Banco de Dados para Auditoria da Equipe</span>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2">
-                    <button onclick="fetchFeedbacksList()" class="text-slate-400 hover:text-amber-400 p-1.5 rounded-lg hover:bg-white/5 transition" title="Atualizar Lista">
-                        <i class="fa-solid fa-rotate text-xs"></i>
-                    </button>
-                    <button onclick="closeFeedbackListModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition">
-                        <i class="fa-solid fa-xmark text-xs"></i>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Filtros de Sistema -->
-            <div class="flex items-center gap-1.5 mb-3 shrink-0 text-xs">
-                <button onclick="filterFeedbacks('all')" id="btn-fb-all" class="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30">Todos (<span id="fb-count-all">0</span>)</button>
-                <button onclick="filterFeedbacks('softcomshop')" id="btn-fb-softcom" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-slate-200 border border-transparent">Softcomshop Web</button>
-                <button onclick="filterFeedbacks('softshop')" id="btn-fb-soft" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-slate-200 border border-transparent">Softshop Desktop</button>
-            </div>
-
-            <!-- Lista de Feedbacks com Scroll -->
-            <div id="feedbacks-container" class="flex-1 overflow-y-auto space-y-3 custom-scroll pr-1 py-1">
-                <div class="text-center py-10 text-slate-500 text-xs">
-                    <i class="fa-solid fa-spinner fa-spin text-amber-400 mb-2 text-base"></i>
-                    <p>Carregando feedbacks salvos no banco...</p>
-                </div>
-            </div>
-
-            <div class="mt-3 pt-3 border-t border-borderBase/60 flex items-center justify-between text-[11px] text-slate-500 shrink-0">
-                <span>Registrado no Banco de Dados</span>
-                <button onclick="closeFeedbackListModal()" class="px-3.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-medium transition">Fechar</button>
-            </div>
-        </div>
-    </div>
-
-
     <!-- Modal de API Key -->
-    <div id="api-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden z-50">
-        <div class="bg-cardBg border border-borderBase rounded-2xl p-5 sm:p-6 max-w-md w-full shadow-2xl relative custom-scroll max-h-[90vh] overflow-y-auto">
-            <div class="flex items-center justify-between mb-3">
-                <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
-                        <i class="fa-solid fa-key text-xs"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-sm font-bold text-white tracking-tight">Gerenciador de Chaves Gemini</h3>
-                        <span class="text-[10px] text-slate-400">Failover Inteligente (Pagas ➔ Gratuitas)</span>
-                    </div>
-                </div>
-                <button onclick="closeApiKeyModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition">
-                    <i class="fa-solid fa-xmark text-xs"></i>
-                </button>
-            </div>
-
-            <!-- Explicação do Funcionamento -->
-            <div class="p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl mb-4 text-[11px] text-slate-300 leading-relaxed">
-                <div class="flex items-center gap-1.5 text-amber-400 font-semibold mb-1">
-                    <i class="fa-solid fa-bolt-lightning text-[10px]"></i>
-                    <span>Prioridade Automática:</span>
-                </div>
-                O sistema prioriza suas <strong>Chaves Pagas</strong>. Se a cota delas acabar (HTTP 429), o QueryHelp comuta <strong>automaticamente para as Chaves Gratuitas</strong> sem interromper o serviço!
-            </div>
-
-            <div class="space-y-3.5">
-                <!-- 1. Campo Chaves Pagas -->
-                <div>
-                    <div class="flex items-center justify-between mb-1">
-                        <label class="text-[11px] font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                            <span>1. Chaves Pagas (Prioridade 1)</span>
-                        </label>
-                        <span class="text-[10px] text-slate-500">Paid Tier</span>
-                    </div>
-                    <textarea 
-                        id="api-paid-keys-input" 
-                        rows="2"
-                        placeholder="Cole sua(s) chave(s) pagas (separe por vírgula ou linha)..." 
-                        class="w-full bg-bgApp border border-borderBase focus:border-emerald-500/60 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none font-mono resize-none"
-                    ></textarea>
-                </div>
-
-                <!-- 2. Campo Chaves Gratuitas -->
-                <div>
-                    <div class="flex items-center justify-between mb-1">
-                        <label class="text-[11px] font-semibold text-sky-400 uppercase tracking-wider flex items-center gap-1.5">
-                            <span class="w-2 h-2 rounded-full bg-sky-400"></span>
-                            <span>2. Chaves Gratuitas (Fallback de Contingência)</span>
-                        </label>
-                        <span class="text-[10px] text-slate-500">Free Tier</span>
-                    </div>
-                    <textarea 
-                        id="api-free-keys-input" 
-                        rows="2"
-                        placeholder="Cole sua(s) chave(s) gratuitas..." 
-                        class="w-full bg-bgApp border border-borderBase focus:border-sky-500/60 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none font-mono resize-none"
-                    ></textarea>
-                </div>
-
-                <!-- Status Atual do Tier -->
-                <div class="p-2.5 rounded-xl border border-borderBase/60 bg-bgApp/60 flex items-center justify-between text-[11px]">
-                    <span class="text-slate-400">Status do Pool:</span>
-                    <span id="tier-badge-status" class="font-semibold text-amber-400 font-mono text-[10.5px]">
-                        Nenhuma chave configurada
-                    </span>
-                </div>
-            </div>
-
-            <div class="flex justify-end gap-2 mt-4 pt-3 border-t border-borderBase/60">
-                <button onclick="closeApiKeyModal()" class="px-3.5 py-1.5 rounded-xl text-xs text-slate-400 hover:text-white transition">Cancelar</button>
-                <button onclick="saveApiKeysPool()" class="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 transition shadow-lg shadow-amber-500/10 flex items-center gap-1.5">
-                    <i class="fa-solid fa-floppy-disk text-[11px]"></i>
-                    <span>Salvar Configuração</span>
-                </button>
+    <div id="api-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-cardBg border border-borderBase rounded-2xl p-5 max-w-sm w-full shadow-2xl">
+            <h3 class="text-sm font-semibold text-white mb-1">Chave da API Gemini</h3>
+            <p class="text-xs text-slate-400 mb-3">Insira sua chave gratuita do Google AI Studio para ativar o modelo generativo.</p>
+            <input 
+                type="password" 
+                id="api-key-input" 
+                placeholder="Cole sua chave aqui..." 
+                class="w-full bg-bgApp border border-borderBase focus:border-amber-500 rounded-lg px-3 py-2 text-xs text-white mb-4 focus:outline-none font-mono"
+            />
+            <div class="flex justify-end gap-2">
+                <button onclick="closeApiKeyModal()" class="px-3 py-1.5 rounded-lg text-xs text-slate-400 hover:text-white">Cancelar</button>
+                <button onclick="saveApiKey()" class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-amber-500 hover:bg-amber-400 text-slate-950">Salvar</button>
             </div>
         </div>
     </div>
@@ -633,263 +230,7 @@
     <script>
         let sessionToken = sessionStorage.getItem('AUTH_SESSION_TOKEN') || '';
         let currentApiKey = sessionStorage.getItem('GEMINI_SESSION_KEY') || '';
-        let currentSystem = sessionStorage.getItem('QH_ACTIVE_SYSTEM') || 'softcomshop';
 
-        function switchSystem(sys) {
-            currentSystem = sys;
-            sessionStorage.setItem('QH_ACTIVE_SYSTEM', sys);
-            
-            const tabSoftcom = document.getElementById('tab-softcomshop');
-            const tabSoft = document.getElementById('tab-softshop');
-            const input = document.getElementById('user-input');
-            const badge = document.getElementById('system-badge-subtitle');
-
-            if (sys === 'softshop') {
-                if (tabSoft) tabSoft.className = 'px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 shadow-sm';
-                if (tabSoftcom) tabSoftcom.className = 'px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 transition flex items-center justify-center gap-1.5 border border-transparent';
-                if (input) input.placeholder = 'Softshop Desktop: digite sua dúvida (vendas, mercadorias, contas a receber)...';
-                if (badge) badge.innerHTML = '<span class="text-cyan-400 font-mono">Softshop Desktop</span> • 642 tabelas (SQL Server)';
-            } else {
-                if (tabSoftcom) tabSoftcom.className = 'px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-sm';
-                if (tabSoft) tabSoft.className = 'px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 transition flex items-center justify-center gap-1.5 border border-transparent';
-                if (input) input.placeholder = 'Softcomshop: digite sua dúvida ou o que deseja consultar...';
-                if (badge) badge.innerHTML = 'Softcomshop • 459 tabelas (Web)';
-            }
-            clearChat();
-        }
-
-        // ====================================================================
-        // GESTOR DE TOKENS E CONSUMO DA IA (LOCALSTORAGE TRACKER)
-        // ====================================================================
-        const TOKEN_DAILY_LIMIT = 1000000; // Limite padrão diário Gemini Free Tier (1M tokens)
-
-        function getStoredTokens() {
-            return {
-                total: parseInt(localStorage.getItem('qh_token_total') || '0', 10),
-                prompt: parseInt(localStorage.getItem('qh_token_prompt') || '0', 10),
-                completion: parseInt(localStorage.getItem('qh_token_completion') || '0', 10),
-                queries: parseInt(localStorage.getItem('qh_queries_total') || '0', 10),
-                aiQueries: parseInt(localStorage.getItem('qh_queries_ai') || '0', 10),
-                ragQueries: parseInt(localStorage.getItem('qh_queries_rag') || '0', 10),
-                history: JSON.parse(localStorage.getItem('qh_token_history') || '[]'),
-                quotaExhausted: localStorage.getItem('qh_quota_exhausted') === 'true'
-            };
-        }
-
-        function recordTokenUsage(usage, queryText) {
-            const data = getStoredTokens();
-            const p = usage.prompt_tokens || 0;
-            const c = usage.completion_tokens || 0;
-            const t = usage.total_tokens || (p + c);
-            const isAi = usage.source && usage.source.includes('gemini');
-
-            data.total += t;
-            data.prompt += p;
-            data.completion += c;
-            data.queries += 1;
-            if (isAi) {
-                data.aiQueries += 1;
-            } else {
-                data.ragQueries += 1;
-            }
-
-            if (usage.quota_exhausted) {
-                data.quotaExhausted = true;
-            }
-
-            const now = new Date();
-            const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-            const historyItem = {
-                time: timeStr,
-                query: (queryText || 'Consulta SQL').slice(0, 32) + (queryText && queryText.length > 32 ? '...' : ''),
-                source: isAi ? 'Gemini 1.5' : 'Schema RAG',
-                tokens: t,
-                isAi: isAi
-            };
-
-            data.history.unshift(historyItem);
-            if (data.history.length > 8) data.history.pop();
-
-            localStorage.setItem('qh_token_total', data.total);
-            localStorage.setItem('qh_token_prompt', data.prompt);
-            localStorage.setItem('qh_token_completion', data.completion);
-            localStorage.setItem('qh_queries_total', data.queries);
-            localStorage.setItem('qh_queries_ai', data.aiQueries);
-            localStorage.setItem('qh_queries_rag', data.ragQueries);
-            localStorage.setItem('qh_token_history', JSON.stringify(data.history));
-            localStorage.setItem('qh_quota_exhausted', data.quotaExhausted);
-
-            renderTokenUI();
-        }
-
-        function formatTokens(num) {
-            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
-            if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
-            return num.toLocaleString('pt-BR');
-        }
-
-        function renderTokenUI() {
-            const data = getStoredTokens();
-
-            // 1. Atualizar Badge no Header Superior
-            const headerCount = document.getElementById('header-token-count');
-            const headerDot = document.getElementById('header-token-dot');
-            if (headerCount) headerCount.innerText = formatTokens(data.total) + ' tkn';
-
-            if (headerDot) {
-                if (data.quotaExhausted) {
-                    headerDot.className = 'w-1.5 h-1.5 rounded-full bg-red-400';
-                } else if (data.ragQueries > 0 && data.aiQueries === 0) {
-                    headerDot.className = 'w-1.5 h-1.5 rounded-full bg-amber-400';
-                } else {
-                    headerDot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse';
-                }
-            }
-
-            // 2. Atualizar Cards de Métricas do Modal
-            const elTotal = document.getElementById('stat-total-tokens');
-            const elPrompt = document.getElementById('stat-prompt-tokens');
-            const elComp = document.getElementById('stat-completion-tokens');
-            const elQueries = document.getElementById('stat-total-queries');
-            const elAiQueries = document.getElementById('stat-ai-queries');
-            const elRagQueries = document.getElementById('stat-rag-queries');
-            const elProgress = document.getElementById('stat-token-progress');
-            const elPct = document.getElementById('stat-token-pct');
-            const elAvg = document.getElementById('stat-avg-tokens');
-
-            if (elTotal) elTotal.innerText = data.total.toLocaleString('pt-BR');
-            if (elPrompt) elPrompt.innerText = data.prompt.toLocaleString('pt-BR');
-            if (elComp) elComp.innerText = data.completion.toLocaleString('pt-BR');
-            if (elQueries) elQueries.innerText = data.queries;
-            if (elAiQueries) elAiQueries.innerText = data.aiQueries;
-            if (elRagQueries) elRagQueries.innerText = data.ragQueries;
-
-            const pct = Math.min(100, ((data.total / TOKEN_DAILY_LIMIT) * 100)).toFixed(2);
-            if (elProgress) elProgress.style.width = pct + '%';
-            if (elPct) elPct.innerText = pct + '% da cota estimada';
-
-            const avg = data.queries > 0 ? Math.round(data.total / data.queries) : 0;
-            if (elAvg) elAvg.innerText = avg.toLocaleString('pt-BR');
-
-            // 3. Atualizar Banner de Status (Ainda dá pra usar?)
-            const banner = document.getElementById('token-status-banner');
-            const iconBox = document.getElementById('token-status-icon');
-            const title = document.getElementById('token-status-title');
-            const pill = document.getElementById('token-status-pill');
-            const desc = document.getElementById('token-status-desc');
-
-            if (banner && title && pill && desc) {
-                if (data.quotaExhausted) {
-                    banner.className = 'bg-red-950/30 border border-red-500/40 rounded-xl p-4 mb-5 flex items-start gap-3 transition';
-                    iconBox.className = 'w-8 h-8 rounded-lg bg-red-500/20 text-red-400 flex items-center justify-center shrink-0 mt-0.5';
-                    iconBox.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-sm"></i>';
-                    title.className = 'text-xs font-semibold text-red-300';
-                    title.innerText = 'Cota do Gemini Atingida — Modo RAG Ativo';
-                    pill.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full bg-red-500/20 text-red-300 border border-red-500/30';
-                    pill.innerText = 'COTA ESGOTADA';
-                    desc.innerText = 'A cota diária do modelo generativo foi atingida. O sistema alternou automaticamente para o motor Schema RAG Local determinístico: você pode continuar gerando queries de auditoria sem interrupção!';
-                } else {
-                    banner.className = 'bg-emerald-950/20 border border-emerald-500/30 rounded-xl p-4 mb-5 flex items-start gap-3 transition';
-                    iconBox.className = 'w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5';
-                    iconBox.innerHTML = '<i class="fa-solid fa-circle-check text-sm"></i>';
-                    title.className = 'text-xs font-semibold text-emerald-300';
-                    title.innerText = 'IA Totalmente Disponível e Pronta';
-                    pill.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
-                    pill.innerText = 'ONLINE';
-                    desc.innerText = 'A cota de tokens está com ampla margem disponível para novas consultas SQL. O modelo Google Gemini 1.5 Flash está pronto para responder.';
-                }
-            }
-
-            // 4. Renderizar Tabela de Histórico
-            const historyBody = document.getElementById('token-history-body');
-            if (historyBody) {
-                if (data.history.length === 0) {
-                    historyBody.innerHTML = `
-                        <tr>
-                            <td colspan="4" class="py-4 text-center text-slate-500 text-xs font-sans">
-                                Nenhuma consulta realizada nesta sessão ainda.
-                            </td>
-                        </tr>
-                    `;
-                } else {
-                    historyBody.innerHTML = data.history.map(item => `
-                        <tr class="hover:bg-white/[0.02] transition">
-                            <td class="py-2 px-3 text-slate-400">${escapeHtml(item.time)}</td>
-                            <td class="py-2 px-3 text-white font-sans truncate max-w-[180px]">${escapeHtml(item.query)}</td>
-                            <td class="py-2 px-3">
-                                <span class="px-1.5 py-0.5 rounded text-[10px] ${item.isAi ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}">
-                                    ${escapeHtml(item.source)}
-                                </span>
-                            </td>
-                            <td class="py-2 px-3 text-right text-slate-200 font-bold">${item.tokens > 0 ? item.tokens : '0'}</td>
-                        </tr>
-                    `).join('');
-                }
-            }
-        }
-
-        function openTokenMonitorModal() {
-            renderTokenUI();
-            document.getElementById('token-modal').classList.remove('hidden');
-        }
-
-        function closeTokenMonitorModal() {
-            document.getElementById('token-modal').classList.add('hidden');
-        }
-
-        function resetTokenSession() {
-            if (confirm('Deseja zerar as métricas de consumo de tokens da sessão atual?')) {
-                localStorage.removeItem('qh_token_total');
-                localStorage.removeItem('qh_token_prompt');
-                localStorage.removeItem('qh_token_completion');
-                localStorage.removeItem('qh_queries_total');
-                localStorage.removeItem('qh_queries_ai');
-                localStorage.removeItem('qh_queries_rag');
-                localStorage.removeItem('qh_token_history');
-                localStorage.removeItem('qh_quota_exhausted');
-                renderTokenUI();
-            }
-        }
-
-        async function testAiQuotaConnection() {
-            const btn = document.getElementById('btn-test-quota');
-            const originalText = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fa-solid fa-circle-notch animate-spin text-[10px]"></i> Verificando cota...';
-
-            try {
-                const res = await fetch('/api/ask', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${sessionToken}`
-                    },
-                    body: JSON.stringify({ action: 'check_quota', apiKey: currentApiKey })
-                });
-                const data = await res.json();
-                
-                if (data.available) {
-                    localStorage.setItem('qh_quota_exhausted', 'false');
-                    alert('✅ Conexão Bem-Sucedida!\n\nA IA está 100% online e a cota do Gemini está disponível para novas consultas.');
-                } else if (data.quota_exhausted) {
-                    localStorage.setItem('qh_quota_exhausted', 'true');
-                    alert('⚠️ Cota Esgotada!\n\nA cota do Gemini foi atingida. O sistema já ativou o modo de contingência Schema RAG para que você nunca fique sem respostas.');
-                } else {
-                    alert('ℹ️ Informação:\n\n' + (data.message || 'Status verificado.'));
-                }
-            } catch (err) {
-                alert('Erro ao testar conectividade: ' + err.message);
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = originalText;
-                renderTokenUI();
-            }
-        }
-
-        // ====================================================================
-        // AUTENTICAÇÃO E SESSÃO
-        // ====================================================================
         function checkAuth() {
             const loginView = document.getElementById('login-view');
             const appView = document.getElementById('app-view');
@@ -897,8 +238,6 @@
                 loginView.classList.add('hidden');
                 appView.classList.remove('hidden');
                 appView.classList.add('flex');
-                renderTokenUI();
-                switchSystem(currentSystem);
             } else {
                 loginView.classList.remove('hidden');
                 appView.classList.add('hidden');
@@ -957,135 +296,52 @@
             document.getElementById('api-modal').classList.add('hidden');
         }
 
-        let currentPaidKeys = localStorage.getItem('GEMINI_PAID_KEYS') || '';
-        let currentFreeKeys = localStorage.getItem('GEMINI_FREE_KEYS') || localStorage.getItem('GEMINI_SESSION_KEY') || '';
-
-        function openApiKeyModal() {
-            document.getElementById('api-paid-keys-input').value = currentPaidKeys;
-            document.getElementById('api-free-keys-input').value = currentFreeKeys;
-            updateTierBadgeUI();
-            document.getElementById('api-modal').classList.remove('hidden');
-        }
-
-        function closeApiKeyModal() {
-            document.getElementById('api-modal').classList.add('hidden');
-        }
-
-        function updateTierBadgeUI() {
-            const badge = document.getElementById('tier-badge-status');
-            const btnText = document.getElementById('btn-api-text');
-            if (currentPaidKeys.trim()) {
-                if (badge) badge.innerHTML = '<span class="text-emerald-400">💎 Prioridade Paga Ativa</span>';
-                if (btnText) btnText.innerHTML = '💎 Chave Paga';
-            } else if (currentFreeKeys.trim()) {
-                if (badge) badge.innerHTML = '<span class="text-sky-400">⚡ Gratuita Ativa</span>';
-                if (btnText) btnText.innerHTML = '⚡ Gratuita';
+        function saveApiKey() {
+            currentApiKey = document.getElementById('api-key-input').value.trim();
+            if (currentApiKey) {
+                sessionStorage.setItem('GEMINI_SESSION_KEY', currentApiKey);
             } else {
-                if (badge) badge.innerHTML = '<span class="text-slate-400">🛡️ Schema RAG Local</span>';
-                if (btnText) btnText.innerHTML = 'Chave';
+                sessionStorage.removeItem('GEMINI_SESSION_KEY');
             }
-        }
-
-        function saveApiKeysPool() {
-            currentPaidKeys = document.getElementById('api-paid-keys-input').value.trim();
-            currentFreeKeys = document.getElementById('api-free-keys-input').value.trim();
-
-            localStorage.setItem('GEMINI_PAID_KEYS', currentPaidKeys);
-            localStorage.setItem('GEMINI_FREE_KEYS', currentFreeKeys);
-            sessionStorage.setItem('GEMINI_PAID_KEYS', currentPaidKeys);
-            sessionStorage.setItem('GEMINI_FREE_KEYS', currentFreeKeys);
-
             closeApiKeyModal();
-            updateTierBadgeUI();
-            testAiQuotaConnection();
+            updateBtnText();
         }
 
-        function goHome(e) {
-            if (e) e.preventDefault();
-            closeApiKeyModal();
-            closeTokenMonitorModal();
-            clearChat();
-            const input = document.getElementById('user-input');
-            if (input) {
-                input.value = '';
-                input.focus();
-            }
-            const box = document.getElementById('chat-box');
-            if (box) {
-                box.scrollTo({ top: 0, behavior: 'smooth' });
+        function updateBtnText() {
+            const btn = document.getElementById('btn-api-text');
+            if (btn) {
+                btn.innerText = currentApiKey ? 'Gemini Conectado' : 'API Gemini';
             }
         }
+        updateBtnText();
 
         function clearChat() {
             const box = document.getElementById('chat-box');
             box.innerHTML = '';
             const welcome = document.createElement('div');
             welcome.id = 'welcome-card';
-            welcome.className = 'text-center py-14 px-4';
-
-            if (currentSystem === 'softshop') {
-                welcome.innerHTML = `
-                    <div class="w-16 h-16 rounded-2xl mx-auto mb-4 bg-cyan-500/10 border border-cyan-500/25 flex items-center justify-center text-cyan-400 shadow-xl shadow-cyan-500/10 relative">
-                        <i class="fa-solid fa-computer text-3xl"></i>
-                        <span class="absolute -bottom-1 -right-1 bg-cyan-500 text-slate-950 rounded-full w-5 h-5 flex items-center justify-center text-[10px] shadow-sm font-bold border-2 border-[#090b10]" title="Sistema Desktop Instalado">
-                            <i class="fa-solid fa-hard-drive text-[9px]"></i>
-                        </span>
-                    </div>
-                    <div class="flex items-center justify-center gap-2 mb-2">
-                        <h1 class="text-lg sm:text-xl font-bold text-white tracking-tight">Módulo <span class="text-cyan-400 font-mono">Softshop Desktop</span></h1>
-                        <span class="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-mono">DESKTOP</span>
-                    </div>
-                    <p class="text-xs text-slate-400 max-w-md mx-auto leading-relaxed mb-6">
-                        Base oficial <strong>BaseLavanderiaPandaNovo</strong> (SQL Server Desktop) com <strong>642 tabelas e 14.234 campos</strong> mapeados. Consultas T-SQL defensivas com colchetes e validações.
-                    </p>
-
-                    <div class="flex flex-wrap justify-center gap-2 max-w-lg mx-auto">
-                        <button onclick="sendQuickPrompt('Como cancelar uma venda com seguranca no Softshop?')" class="text-xs text-slate-300 hover:text-white bg-cardBg hover:bg-white/5 border border-borderBase px-3 py-1.5 rounded-lg transition">
-                            Cancelar venda (com validação)
-                        </button>
-                        <button onclick="sendQuickPrompt('Listar ultimas vendas com cliente e total')" class="text-xs text-slate-300 hover:text-white bg-cardBg hover:bg-white/5 border border-borderBase px-3 py-1.5 rounded-lg transition">
-                            Últimas vendas
-                        </button>
-                        <button onclick="sendQuickPrompt('Mercadorias com estoque baixo ou zerado')" class="text-xs text-slate-300 hover:text-white bg-cardBg hover:bg-white/5 border border-borderBase px-3 py-1.5 rounded-lg transition">
-                            Estoque de mercadorias
-                        </button>
-                        <button onclick="sendQuickPrompt('Contas a receber vencidas e inadimplencia')" class="text-xs text-slate-300 hover:text-white bg-cardBg hover:bg-white/5 border border-borderBase px-3 py-1.5 rounded-lg transition">
-                            Contas a receber
-                        </button>
-                    </div>
-                `;
-            } else {
-                welcome.innerHTML = `
-                    <div class="w-16 h-16 rounded-2xl mx-auto mb-4 bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-400 shadow-xl shadow-amber-500/10 relative">
-                        <i class="fa-solid fa-globe text-3xl"></i>
-                        <span class="absolute -bottom-1 -right-1 bg-amber-500 text-slate-950 rounded-full w-5 h-5 flex items-center justify-center text-[10px] shadow-sm font-bold border-2 border-[#090b10]" title="Sistema Web na Nuvem">
-                            <i class="fa-solid fa-cloud text-[9px]"></i>
-                        </span>
-                    </div>
-                    <div class="flex items-center justify-center gap-2 mb-2">
-                        <h1 class="text-lg sm:text-xl font-bold text-white tracking-tight">Módulo <span class="text-amber-400 font-mono">Softcomshop Web</span></h1>
-                        <span class="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono">WEB</span>
-                    </div>
-                    <p class="text-xs text-slate-400 max-w-md mx-auto leading-relaxed mb-6">
-                        Estrutura oficial de <strong>459 tabelas e 6.600 campos</strong> (MySQL Web). Consultas otimizadas com multi-empresa e exclusão lógica segura.
-                    </p>
-
-                    <div class="flex flex-wrap justify-center gap-2 max-w-lg mx-auto">
-                        <button onclick="sendQuickPrompt('Como deletar vendas com segurança?')" class="text-xs text-slate-300 hover:text-white bg-cardBg hover:bg-white/5 border border-borderBase px-3 py-1.5 rounded-lg transition">
-                            Deletar vendas (com validação)
-                        </button>
-                        <button onclick="sendQuickPrompt('Quais vendas estão em contingência e suas diferenças?')" class="text-xs text-slate-300 hover:text-white bg-cardBg hover:bg-white/5 border border-borderBase px-3 py-1.5 rounded-lg transition">
-                            Vendas em contingência
-                        </button>
-                        <button onclick="sendQuickPrompt('Como alterar o preço ou estoque de um produto?')" class="text-xs text-slate-300 hover:text-white bg-cardBg hover:bg-white/5 border border-borderBase px-3 py-1.5 rounded-lg transition">
-                            Alterar preço/estoque
-                        </button>
-                        <button onclick="sendQuickPrompt('Faturamento agrupado por forma de pagamento')" class="text-xs text-slate-300 hover:text-white bg-cardBg hover:bg-white/5 border border-borderBase px-3 py-1.5 rounded-lg transition">
-                            Faturamento por pagamento
-                        </button>
-                    </div>
-                `;
-            }
+            welcome.className = 'text-center py-16 px-4';
+            welcome.innerHTML = `
+                <img src="logo.jpg" alt="Logo" class="w-16 h-16 rounded-2xl mx-auto mb-4 object-cover border border-white/10 shadow-lg" />
+                <h1 class="text-xl font-semibold text-white mb-2 tracking-tight">Bem-vindo, <span class="text-amber-400 font-mono">Especialista</span>!</h1>
+                <p class="text-xs text-slate-400 max-w-md mx-auto leading-relaxed mb-6">
+                    Estrutura oficial de <strong>459 tabelas e 6.600 campos</strong> conectada no Supabase. Pergunte sobre consultas, exclusões ou atualizações com validação prévia.
+                </p>
+                <div class="flex flex-wrap justify-center gap-2 max-w-lg mx-auto">
+                    <button onclick="sendQuickPrompt('Como deletar vendas com segurança?')" class="text-xs text-slate-300 hover:text-white bg-cardBg hover:bg-white/5 border border-borderBase px-3 py-1.5 rounded-lg transition">
+                        Deletar vendas (com validação)
+                    </button>
+                    <button onclick="sendQuickPrompt('Quais vendas estão em contingência e suas diferenças?')" class="text-xs text-slate-300 hover:text-white bg-cardBg hover:bg-white/5 border border-borderBase px-3 py-1.5 rounded-lg transition">
+                        Vendas em contingência
+                    </button>
+                    <button onclick="sendQuickPrompt('Como alterar o preço ou estoque de um produto?')" class="text-xs text-slate-300 hover:text-white bg-cardBg hover:bg-white/5 border border-borderBase px-3 py-1.5 rounded-lg transition">
+                        Alterar preço/estoque
+                    </button>
+                    <button onclick="sendQuickPrompt('Faturamento agrupado por forma de pagamento')" class="text-xs text-slate-300 hover:text-white bg-cardBg hover:bg-white/5 border border-borderBase px-3 py-1.5 rounded-lg transition">
+                        Faturamento por pagamento
+                    </button>
+                </div>
+            `;
             box.appendChild(welcome);
         }
 
@@ -1103,9 +359,8 @@
             const welcomeCard = document.getElementById('welcome-card');
             if (welcomeCard) welcomeCard.remove();
 
-            lastSentQueryText = queryText;
-            appendUserMessage(queryText);
             input.value = '';
+            appendUserMessage(queryText);
 
             const loadingId = appendLoadingMessage();
 
@@ -1116,12 +371,7 @@
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${sessionToken}`
                     },
-                    body: JSON.stringify({ 
-                        message: queryText, 
-                        paidKeys: currentPaidKeys,
-                        freeKeys: currentFreeKeys,
-                        system: currentSystem 
-                    })
+                    body: JSON.stringify({ message: queryText, apiKey: currentApiKey })
                 });
 
                 if (response.status === 401) {
@@ -1141,226 +391,10 @@
                 const data = await response.json();
                 removeLoadingMessage(loadingId);
                 appendBotMessage(data);
-
-                // Registra consumo no Monitor de Tokens
-                if (data && data.usage) {
-                    recordTokenUsage(data.usage, queryText);
-                }
             } catch (err) {
                 removeLoadingMessage(loadingId);
                 appendErrorMessage('Não foi possível gerar a resposta: ' + err.message);
             }
-        }
-
-                let lastSentQueryText = '';
-
-        // ====================================================================
-        // GESTÃO DE FEEDBACKS E REPORT DE ERROS (GRAVAÇÃO NO BANCO DE DADOS)
-        // ====================================================================
-        let lastReportContext = { prompt: '', sql: '', system: 'softcomshop' };
-        let allFeedbacksCache = [];
-        let currentFeedbackFilter = 'all';
-
-        function triggerReportCurrentBotMessage(tab1Id, code1Id, code2Id) {
-            const isCode2Visible = !document.getElementById(code2Id).classList.contains('hidden');
-            const targetCodeId = isCode2Visible ? code2Id : code1Id;
-            const codeEl = document.querySelector('#' + targetCodeId + ' code');
-            const sql = codeEl ? codeEl.innerText : '';
-            openReportModalWithData(lastSentQueryText || 'Consulta recente', sql, currentSystem);
-        }
-
-        function triggerReportSingleBotMessage(codeId) {
-            const codeEl = document.querySelector('#' + codeId + ' code');
-            const sql = codeEl ? codeEl.innerText : '';
-            openReportModalWithData(lastSentQueryText || 'Consulta recente', sql, currentSystem);
-        }
-
-        function openReportModalWithData(prompt, sql, system) {
-            lastReportContext = { prompt, sql, system };
-            document.getElementById('report-sys-badge').innerText = (system === 'softshop') ? 'Softshop Desktop (SQL Server)' : 'Softcomshop Web (MySQL)';
-            document.getElementById('report-sys-badge').className = (system === 'softshop') 
-                ? 'font-mono text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/30 text-cyan-300'
-                : 'font-mono text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-300';
-            document.getElementById('report-prompt-text').innerText = prompt || 'Consulta do usuário';
-            document.getElementById('report-sql-text').innerText = sql || '-- Nenhum SQL extraído';
-            document.getElementById('report-error-notes').value = '';
-            
-            const statusDiv = document.getElementById('report-form-status');
-            statusDiv.className = 'hidden text-xs p-2.5 rounded-xl text-center font-medium';
-            statusDiv.innerText = '';
-            
-            document.getElementById('report-error-modal').classList.remove('hidden');
-        }
-
-        function closeReportErrorModal() {
-            document.getElementById('report-error-modal').classList.add('hidden');
-        }
-
-        async function submitFeedbackReport(e) {
-            e.preventDefault();
-            const btn = document.getElementById('btn-submit-report');
-            const statusDiv = document.getElementById('report-form-status');
-            const category = document.getElementById('report-error-category').value;
-            const notes = document.getElementById('report-error-notes').value.trim();
-
-            if (!notes) {
-                statusDiv.className = 'text-xs p-2.5 rounded-xl text-center font-medium bg-red-950/40 text-red-300 border border-red-500/30 block';
-                statusDiv.innerText = 'Por favor, informe a descrição do erro.';
-                return;
-            }
-
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs"></i> Gravando no banco...';
-
-            try {
-                const resp = await fetch('/api/feedback', {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${sessionToken}`
-                    },
-                    body: JSON.stringify({
-                        system: lastReportContext.system,
-                        user_prompt: lastReportContext.prompt,
-                        generated_sql: lastReportContext.sql,
-                        error_type: category,
-                        feedback_notes: notes
-                    })
-                });
-
-                if (!resp.ok) {
-                    throw new Error('Erro ao salvar feedback na API.');
-                }
-
-                statusDiv.className = 'text-xs p-2.5 rounded-xl text-center font-medium bg-emerald-950/40 text-emerald-300 border border-emerald-500/30 block';
-                statusDiv.innerHTML = '<i class="fa-solid fa-check mr-1"></i> Feedback gravado com sucesso no banco de dados!';
-                
-                // Atualiza contadores
-                fetchFeedbacksList();
-
-                setTimeout(() => {
-                    closeReportErrorModal();
-                }, 1500);
-            } catch (err) {
-                statusDiv.className = 'text-xs p-2.5 rounded-xl text-center font-medium bg-red-950/40 text-red-300 border border-red-500/30 block';
-                statusDiv.innerText = 'Erro ao enviar: ' + err.message;
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fa-solid fa-paper-plane text-[11px]"></i> <span>Salvar Feedback no Banco</span>';
-            }
-        }
-
-        // ====================================================================
-        // VISUALIZAÇÃO DOS FEEDBACKS SALVOS (PARA A GENTE VER DEPOIS)
-        // ====================================================================
-        function openFeedbackListModal() {
-            document.getElementById('feedback-list-modal').classList.remove('hidden');
-            fetchFeedbacksList();
-        }
-
-        function closeFeedbackListModal() {
-            document.getElementById('feedback-list-modal').classList.add('hidden');
-        }
-
-        async function fetchFeedbacksList() {
-            const container = document.getElementById('feedbacks-container');
-            try {
-                const resp = await fetch('/api/feedback');
-                if (!resp.ok) throw new Error('Falha ao obter lista');
-                const data = await resp.json();
-                allFeedbacksCache = data.feedbacks || [];
-                
-                // Atualizar badges
-                const badgeHeader = document.getElementById('header-feedback-badge');
-                if (badgeHeader) badgeHeader.innerText = allFeedbacksCache.length;
-                const countAll = document.getElementById('fb-count-all');
-                if (countAll) countAll.innerText = allFeedbacksCache.length;
-
-                renderFeedbacksUI();
-            } catch (err) {
-                if (container) {
-                    container.innerHTML = `
-                        <div class="p-4 bg-red-950/20 border border-red-500/20 rounded-xl text-red-400 text-xs text-center">
-                            Não foi possível carregar os feedbacks do banco: ${escapeHtml(err.message)}
-                        </div>
-                    `;
-                }
-            }
-        }
-
-        function filterFeedbacks(sys) {
-            currentFeedbackFilter = sys;
-            const btnAll = document.getElementById('btn-fb-all');
-            const btnSoftcom = document.getElementById('btn-fb-softcom');
-            const btnSoft = document.getElementById('btn-fb-soft');
-
-            if (btnAll) btnAll.className = (sys === 'all') ? 'px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30' : 'px-2.5 py-1 rounded-lg text-slate-400 hover:text-slate-200 border border-transparent';
-            if (btnSoftcom) btnSoftcom.className = (sys === 'softcomshop') ? 'px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30' : 'px-2.5 py-1 rounded-lg text-slate-400 hover:text-slate-200 border border-transparent';
-            if (btnSoft) btnSoft.className = (sys === 'softshop') ? 'px-2.5 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 font-semibold border border-cyan-500/30' : 'px-2.5 py-1 rounded-lg text-slate-400 hover:text-slate-200 border border-transparent';
-
-            renderFeedbacksUI();
-        }
-
-        function renderFeedbacksUI() {
-            const container = document.getElementById('feedbacks-container');
-            if (!container) return;
-
-            const filtered = allFeedbacksCache.filter(fb => {
-                if (currentFeedbackFilter === 'all') return true;
-                return fb.system === currentFeedbackFilter;
-            });
-
-            if (filtered.length === 0) {
-                container.innerHTML = `
-                    <div class="text-center py-12 text-slate-500 text-xs">
-                        <i class="fa-regular fa-circle-check text-2xl text-slate-600 mb-2"></i>
-                        <p class="font-medium text-slate-400">Nenhum feedback ou erro reportado nesta categoria.</p>
-                        <p class="text-[11px] text-slate-600 mt-0.5">Quando um usuário reportar erro em uma consulta gerada, ela aparecerá aqui.</p>
-                    </div>
-                `;
-                return;
-            }
-
-            container.innerHTML = filtered.map(fb => {
-                const isSoftshop = fb.system === 'softshop';
-                const dateStr = fb.created_at ? new Date(fb.created_at).toLocaleString('pt-BR') : 'Recentemente';
-                return `
-                    <div class="p-3.5 rounded-xl border border-borderBase bg-[#090b10] hover:border-borderBase/80 transition space-y-2 text-xs">
-                        <div class="flex items-center justify-between gap-2 flex-wrap">
-                            <div class="flex items-center gap-1.5">
-                                <span class="px-2 py-0.5 rounded font-mono text-[10px] font-semibold ${isSoftshop ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30' : 'bg-amber-500/15 text-amber-300 border border-amber-500/30'}">
-                                    ${escapeHtml(fb.system_name || fb.system)}
-                                </span>
-                                <span class="px-2 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20 text-[10px] font-medium">
-                                    ${escapeHtml(fb.error_type || 'Incorreto')}
-                                </span>
-                            </div>
-                            <span class="text-slate-500 text-[10.5px] font-mono">${dateStr}</span>
-                        </div>
-
-                        <div>
-                            <span class="text-slate-500 text-[10.5px] uppercase font-semibold">Pergunta:</span>
-                            <p class="text-slate-200 mt-0.5 leading-relaxed font-normal">${escapeHtml(fb.user_prompt || '(Não informada)')}</p>
-                        </div>
-
-                        <div class="p-2.5 bg-red-950/15 border border-red-500/20 rounded-lg">
-                            <span class="text-red-400 text-[10.5px] font-semibold flex items-center gap-1">
-                                <i class="fa-solid fa-comment-dots text-[10px]"></i> O que o usuário informou estar errado:
-                            </span>
-                            <p class="text-red-200/90 mt-1 leading-relaxed text-[11.5px]">${escapeHtml(fb.feedback_notes)}</p>
-                        </div>
-
-                        ${fb.generated_sql ? `
-                        <details class="group">
-                            <summary class="text-[11px] text-slate-400 hover:text-amber-400 cursor-pointer font-mono select-none flex items-center gap-1">
-                                <i class="fa-solid fa-code text-[10px]"></i> Ver SQL que foi gerado
-                            </summary>
-                            <pre class="mt-1.5 p-2 bg-black/60 rounded-lg text-slate-300 font-mono text-[10px] overflow-x-auto custom-scroll border border-white/5"><code>${escapeHtml(fb.generated_sql)}</code></pre>
-                        </details>
-                        ` : ''}
-                    </div>
-                `;
-            }).join('');
         }
 
         function appendUserMessage(text) {
@@ -1377,18 +411,16 @@
         }
 
         function appendLoadingMessage() {
-            const box = document.getElementById('chat-box');
             const id = 'loading-' + Date.now();
+            const box = document.getElementById('chat-box');
             const div = document.createElement('div');
             div.id = id;
-            div.className = 'flex gap-3 items-center text-xs text-slate-400';
+            div.className = 'flex gap-3 items-start';
             div.innerHTML = `
-                <img src="logo.jpg" alt="Logo" class="w-6 h-6 rounded-md object-cover border border-white/10 shrink-0" />
-                <div class="flex items-center gap-2">
-                    <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
-                    <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse delay-75"></span>
-                    <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse delay-150"></span>
-                    <span class="text-[11px] text-slate-400 font-medium ml-1">Analisando 459 tabelas e gerando SQL...</span>
+                <img src="logo.jpg" alt="Logo" class="w-6 h-6 rounded-md object-cover border border-white/10 shrink-0 mt-1 animate-pulse" />
+                <div class="text-xs text-slate-400 py-1 flex items-center gap-2">
+                    <i class="fa-solid fa-circle-notch animate-spin text-amber-400"></i>
+                    <span>Estruturando e validando consulta no schema...</span>
                 </div>
             `;
             box.appendChild(div);
@@ -1401,15 +433,16 @@
             if (el) el.remove();
         }
 
-        function appendErrorMessage(msg) {
+        function appendErrorMessage(text) {
             const box = document.getElementById('chat-box');
             const div = document.createElement('div');
-            div.className = 'flex gap-3 items-start text-xs text-red-400 bg-red-950/20 border border-red-500/20 rounded-xl p-3';
+            div.className = 'flex gap-3 items-start';
             div.innerHTML = `
-                <i class="fa-solid fa-circle-exclamation text-sm text-red-400 shrink-0 mt-0.5"></i>
-                <div class="space-y-1">
-                    <div class="font-medium text-red-300">Falha na consulta</div>
-                    <div class="text-[11px] text-red-400/90 leading-relaxed">${escapeHtml(msg)}</div>
+                <div class="w-6 h-6 rounded-md bg-red-500/20 text-red-400 flex items-center justify-center text-xs shrink-0 mt-1">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <div class="text-xs text-red-300 py-1 bg-red-950/30 border border-red-500/20 rounded-xl px-3.5 py-2">
+                    ${escapeHtml(text)}
                 </div>
             `;
             box.appendChild(div);
@@ -1423,7 +456,6 @@
 
             const isModification = (data.tipo_operacao === 'UPDATE' || data.tipo_operacao === 'DELETE' || !!data.sql_validacao);
             const tables = data.tabelas_utilizadas || [];
-            const usage = data.usage || null;
 
             let contentHtml = `
                 <div class="flex-1 space-y-3">
@@ -1451,14 +483,9 @@
                                     <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span> 2. Execução (${escapeHtml(opName)})
                                 </button>
                             </div>
-                            <div class="flex items-center gap-1">
-                                <button onclick="triggerReportCurrentBotMessage('${tab1Id}', '${code1Id}', '${code2Id}')" class="text-[11px] text-slate-400 hover:text-amber-400 px-2 py-0.5 rounded hover:bg-white/5 transition flex items-center gap-1" title="Reportar erro nesta consulta">
-                                    <i class="fa-regular fa-flag text-[10px]"></i> Reportar Erro
-                                </button>
-                                <button id="${btnCopyId}" onclick="copyActiveCode('${code1Id}', '${btnCopyId}')" class="text-[11px] text-slate-400 hover:text-white px-2 py-0.5 rounded hover:bg-white/5 transition flex items-center gap-1">
-                                    <i class="fa-regular fa-copy text-[10px]"></i> Copiar
-                                </button>
-                            </div>
+                            <button id="${btnCopyId}" onclick="copyActiveCode('${code1Id}', '${btnCopyId}')" class="text-[11px] text-slate-400 hover:text-white px-2 py-0.5 rounded hover:bg-white/5 transition flex items-center gap-1">
+                                <i class="fa-regular fa-copy text-[10px]"></i> Copiar
+                            </button>
                         </div>
 
                         <!-- Código da Aba 1 (SELECT de Validação) -->
@@ -1485,47 +512,26 @@
                     <!-- Bloco Único de Código Clean -->
                     <div class="rounded-xl border border-borderBase bg-[#090b10] overflow-hidden">
                         <div class="flex items-center justify-between border-b border-borderBase px-3.5 py-2 bg-cardBg/60 text-[11px] text-slate-400">
-                            <span class="font-mono text-slate-400">${currentSystem === "softshop" ? "sql-server (t-sql)" : "mysql"}</span>
-                            <div class="flex items-center gap-1">
-                                <button onclick="triggerReportSingleBotMessage('${codeId}')" class="text-slate-400 hover:text-amber-400 px-2 py-0.5 rounded hover:bg-white/5 transition flex items-center gap-1" title="Reportar erro nesta consulta">
-                                    <i class="fa-regular fa-flag text-[10px]"></i> Reportar Erro
-                                </button>
-                                <button id="${btnId}" onclick="copySqlClean('${codeId}', '${btnId}')" class="text-slate-400 hover:text-white px-2 py-0.5 rounded hover:bg-white/5 transition flex items-center gap-1">
-                                    <i class="fa-regular fa-copy text-[10px]"></i> Copiar
-                                </button>
-                            </div>
+                            <span class="font-mono text-slate-400">mysql</span>
+                            <button id="${btnId}" onclick="copySqlClean('${codeId}', '${btnId}')" class="text-slate-400 hover:text-white px-2 py-0.5 rounded hover:bg-white/5 transition flex items-center gap-1">
+                                <i class="fa-regular fa-copy text-[10px]"></i> Copiar
+                            </button>
                         </div>
                         <pre class="p-3.5 text-slate-200 overflow-x-auto custom-scroll" id="${codeId}"><code>${escapeHtml(sqlText)}</code></pre>
                     </div>
                 `;
             }
 
-            // Metadados de Tabelas e Custo de Tokens no Card
-            contentHtml += `<div class="flex flex-wrap items-center justify-between text-[11px] text-slate-500 pt-0.5 gap-2">`;
             if (tables.length > 0) {
                 contentHtml += `
-                    <div class="flex items-center gap-2">
+                    <div class="text-[11px] text-slate-500 flex items-center gap-2 pt-0.5">
                         <span>Tabelas:</span>
                         <span class="text-slate-400 font-mono">${escapeHtml(tables.join(', '))}</span>
                     </div>
                 `;
-            } else {
-                contentHtml += `<div></div>`;
             }
 
-            if (usage) {
-                const isAi = usage.source && usage.source.includes('gemini');
-                contentHtml += `
-                    <div class="flex items-center gap-1.5 font-mono text-[10px] px-2 py-0.5 rounded bg-white/[0.03] border border-borderBase/60">
-                        <i class="${isAi ? 'fa-solid fa-microchip text-amber-400' : 'fa-solid fa-bolt text-emerald-400'} text-[9px]"></i>
-                        <span class="text-slate-400">${usage.total_tokens > 0 ? usage.total_tokens + ' tokens' : '0 tokens'}</span>
-                        <span class="text-slate-600">•</span>
-                        <span class="${isAi ? 'text-amber-300/80' : 'text-emerald-400/80'}">${isAi ? 'Gemini 1.5' : 'Schema RAG'}</span>
-                    </div>
-                `;
-            }
-
-            contentHtml += `</div></div>`;
+            contentHtml += `</div>`;
 
             div.innerHTML = `
                 <img src="logo.jpg" alt="Logo" class="w-6 h-6 rounded-md object-cover border border-white/10 shrink-0 mt-0.5" />
