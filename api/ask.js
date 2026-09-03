@@ -496,6 +496,102 @@ ${relevantSchema}
   });
 }
 
+
+// ====================================================================
+// 3.1 GESTÃO DO POOL DE CHAVES: PAGAS COM FAILOVER AUTOMÁTICO PARA GRATUITAS
+// ====================================================================
+async function callGeminiWithFailover(message, keysConfig, system = 'softcomshop') {
+  // 1. Extração do Pool de Chaves Pagas
+  let paidList = [];
+  if (Array.isArray(keysConfig.paidKeys)) {
+    paidList = keysConfig.paidKeys;
+  } else if (typeof keysConfig.paidKeys === 'string') {
+    paidList = keysConfig.paidKeys.split(/[\n,]/);
+  }
+  if (process.env.GEMINI_PAID_KEYS) {
+    paidList = paidList.concat(process.env.GEMINI_PAID_KEYS.split(/[\n,]/));
+  }
+  if (process.env.GEMINI_PAID_KEY) {
+    paidList.push(process.env.GEMINI_PAID_KEY);
+  }
+  paidList = paidList.map(k => (k || '').trim()).filter(k => k.length > 10);
+
+  // 2. Extração do Pool de Chaves Gratuitas
+  let freeList = [];
+  if (Array.isArray(keysConfig.freeKeys)) {
+    freeList = keysConfig.freeKeys;
+  } else if (typeof keysConfig.freeKeys === 'string') {
+    freeList = keysConfig.freeKeys.split(/[\n,]/);
+  }
+  if (keysConfig.apiKey) {
+    freeList.push(keysConfig.apiKey);
+  }
+  if (process.env.GEMINI_FREE_KEYS) {
+    freeList = freeList.concat(process.env.GEMINI_FREE_KEYS.split(/[\n,]/));
+  }
+  if (process.env.GEMINI_FREE_KEY) {
+    freeList.push(process.env.GEMINI_FREE_KEY);
+  }
+  if (process.env.GEMINI_API_KEY) {
+    freeList.push(process.env.GEMINI_API_KEY);
+  }
+  freeList = freeList.map(k => (k || '').trim()).filter(k => k.length > 10);
+
+  let triedPaid = false;
+  let paidQuotaExhausted = false;
+
+  // ETAPA 1: Tenta as Chaves Pagas (Prioridade Máxima)
+  if (paidList.length > 0) {
+    triedPaid = true;
+    for (const key of paidList) {
+      const res = await callGeminiStructured(message, key, system);
+      if (res) {
+        if (res._error) {
+          if (res.quota_exhausted) paidQuotaExhausted = true;
+          continue; // Tenta próxima chave paga
+        }
+        if (res.sql_final || res.sql) {
+          res.usage = res.usage || {};
+          res.usage.tier = 'paid';
+          res.usage.tier_name = 'Chave Paga (Paid Tier)';
+          res.usage.failover_occurred = false;
+          res.usage.source = 'gemini-1.5-flash (Paid Tier)';
+          return res;
+        }
+      }
+    }
+  }
+
+  // ETAPA 2: FAILOVER AUTOMÁTICO PARA AS CHAVES GRATUITAS
+  if (freeList.length > 0) {
+    for (const key of freeList) {
+      const res = await callGeminiStructured(message, key, system);
+      if (res) {
+        if (res._error) {
+          continue; // Tenta próxima chave gratuita
+        }
+        if (res.sql_final || res.sql) {
+          res.usage = res.usage || {};
+          res.usage.tier = 'free';
+          res.usage.tier_name = triedPaid ? 'Chave Gratuita (Fallback Ativado)' : 'Chave Gratuita (Free Tier)';
+          res.usage.failover_occurred = triedPaid;
+          res.usage.source = triedPaid ? 'gemini-1.5-flash (Fallback Gratuito)' : 'gemini-1.5-flash (Free Tier)';
+          return res;
+        }
+      }
+    }
+  }
+
+  // Se ambos os pools falharem ou não houver nenhuma chave configurada
+  return {
+    _error: true,
+    quota_exhausted: (paidList.length > 0 || freeList.length > 0),
+    has_keys: (paidList.length > 0 || freeList.length > 0),
+    tried_paid: triedPaid,
+    paid_exhausted: paidQuotaExhausted
+  };
+}
+
 // Verificador rápido de Quota (Ping leve de 1 token)
 function checkGeminiQuota(apiKey) {
   return new Promise((resolve) => {
@@ -597,42 +693,61 @@ module.exports = async function handler(req, res) {
       body = {};
     }
 
-    // Endpoint específico para Teste de Conexão e Quota
+    // Endpoint específico para Teste de Conexão e Quota com suporte ao Pool
     if (body.action === "check_quota") {
-      const testKey = body.apiKey || process.env.GEMINI_API_KEY;
-      if (!testKey) {
+      let paidList = [];
+      if (Array.isArray(body.paidKeys)) paidList = body.paidKeys;
+      else if (typeof body.paidKeys === 'string') paidList = body.paidKeys.split(/[\n,]/);
+      paidList = paidList.map(k => (k || '').trim()).filter(k => k.length > 10);
+
+      let freeList = [];
+      if (Array.isArray(body.freeKeys)) freeList = body.freeKeys;
+      else if (typeof body.freeKeys === 'string') freeList = body.freeKeys.split(/[\n,]/);
+      if (body.apiKey) freeList.push(body.apiKey);
+      if (process.env.GEMINI_API_KEY) freeList.push(process.env.GEMINI_API_KEY);
+      freeList = freeList.map(k => (k || '').trim()).filter(k => k.length > 10);
+
+      if (paidList.length === 0 && freeList.length === 0) {
         return res.status(200).json({
           available: false,
           quota_exhausted: false,
           has_key: false,
-          message: "Nenhuma chave de API configurada. O sistema está operando no modo Fallback Schema RAG (Ilimitado e Gratuito)."
+          message: "Nenhuma chave configurada. O sistema está operando no modo Fallback Schema RAG (Ilimitado e Gratuito)."
         });
       }
+
+      const testKey = paidList.length > 0 ? paidList[0] : freeList[0];
+      const isPaid = paidList.length > 0;
       const quotaCheck = await checkGeminiQuota(testKey);
       return res.status(200).json({
         ...quotaCheck,
-        has_key: true
+        has_key: true,
+        tier: isPaid ? "paid" : "free",
+        tier_label: isPaid ? "Chave Paga (Prioridade 1)" : "Chave Gratuita"
       });
     }
 
     const rawMessage = typeof body.message === "string" ? body.message : "";
     const message = rawMessage.slice(0, 1500).trim();
-    const activeKey = body.apiKey || process.env.GEMINI_API_KEY;
     const activeSystem = body.system === "softshop" ? "softshop" : "softcomshop";
 
     let geminiQuotaExhausted = false;
 
-    // Se houver chave do Gemini, tenta executar via IA com o prompt do sistema selecionado
-    if (activeKey) {
-      const geminiRes = await callGeminiStructured(message, activeKey, activeSystem);
-      if (geminiRes) {
-        if (geminiRes._error) {
-          if (geminiRes.quota_exhausted) {
-            geminiQuotaExhausted = true;
-          }
-        } else if (geminiRes.sql_final || geminiRes.sql) {
-          return res.status(200).json(sanitizeData(geminiRes));
+    // Executa com Gestão Inteligente de Pool: Tenta Pagas Primeiro -> Falha para Gratuitas
+    const keysConfig = {
+      paidKeys: body.paidKeys || [],
+      freeKeys: body.freeKeys || [],
+      apiKey: body.apiKey || process.env.GEMINI_API_KEY
+    };
+
+    const geminiRes = await callGeminiWithFailover(message, keysConfig, activeSystem);
+    if (geminiRes) {
+      if (geminiRes._error) {
+        if (geminiRes.quota_exhausted) {
+          geminiQuotaExhausted = true;
         }
+      } else if (geminiRes.sql_final || geminiRes.sql) {
+        return res.status(200).json(sanitizeData(geminiRes));
       }
     }
 
