@@ -2,7 +2,7 @@
 <html lang="pt-BR" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>QueryHelp (BETA) • by Dantas</title>
     
     <!-- Google Fonts -->
@@ -132,64 +132,94 @@
     <!-- APLICAÇÃO PRINCIPAL (Exibida após Login) -->
     <div id="app-view" class="min-h-screen flex-col hidden">
         <!-- Header Minimalista com Monitor de Tokens -->
-        <header class="border-b border-borderBase px-6 py-3 bg-bgApp/90 sticky top-0 z-40 backdrop-blur-md flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <img src="logo.jpg" alt="Logo" class="w-8 h-8 rounded-lg object-cover border border-white/10 shadow-sm" />
-                <div class="flex items-center gap-2">
-                    <span class="text-sm font-semibold text-white tracking-tight">QueryHelp</span>
-                    <span class="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono">BETA</span>
-                    <span class="text-[11px] text-amber-400/90 font-mono bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">by Dantas</span>
+        <header class="border-b border-borderBase px-3 sm:px-6 py-2 sm:py-2.5 bg-bgApp/95 sticky top-0 z-40 backdrop-blur-md">
+            <div class="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-2 sm:gap-2.5">
+                
+                <!-- Linha 1 no Mobile (Logo e Botões de Ação Rápidos) / Lado Esquerdo no Desktop -->
+                <div class="flex items-center justify-between w-full md:w-auto">
+                    <a href="/" onclick="goHome(event)" class="flex items-center gap-2 sm:gap-3 cursor-pointer group hover:opacity-95 transition-all select-none" title="Voltar para a Página Inicial">
+                        <img src="logo.jpg" alt="Logo" class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg object-cover border border-white/10 shadow-sm shrink-0 group-hover:scale-105 group-hover:border-amber-500/50 transition-all duration-200" />
+                        <div class="flex items-center gap-1.5 sm:gap-2">
+                            <span class="text-xs sm:text-sm font-semibold text-white tracking-tight group-hover:text-amber-400 transition-colors">QueryHelp</span>
+                            <span class="text-[9px] sm:text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono">BETA</span>
+                            <span class="text-[10px] sm:text-[11px] text-amber-400/90 font-mono bg-amber-500/10 px-1.5 sm:px-2 py-0.5 rounded-full border border-amber-500/20">by Dantas</span>
+                        </div>
+                    </a>
+
+                    <!-- Botões Rápidos Exclusivos do Mobile (Visíveis apenas em telas < md) -->
+                    <div class="flex items-center gap-1 md:hidden">
+                        <!-- Monitor de Tokens Compacto Mobile -->
+                        <button onclick="openTokenMonitorModal()" class="text-xs text-slate-300 hover:text-white px-2 py-1 rounded-lg bg-cardBg border border-borderBase transition flex items-center gap-1.5" title="Monitor de Tokens">
+                            <i class="fa-solid fa-gauge-high text-amber-400 text-[10px]"></i>
+                            <span id="header-token-count-mobile" class="text-[10px] font-mono text-emerald-400 font-semibold">0 tkn</span>
+                        </button>
+                        <!-- Chave Mobile -->
+                        <button onclick="openApiKeyModal()" class="text-slate-300 hover:text-white p-1.5 rounded-lg bg-cardBg border border-borderBase transition" title="Chave API Gemini">
+                            <i class="fa-solid fa-key text-[10px] text-slate-400"></i>
+                        </button>
+                        <!-- Nova Conversa Mobile -->
+                        <button onclick="clearChat()" class="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-white/5 transition" title="Nova Conversa">
+                            <i class="fa-solid fa-arrow-rotate-right text-[10px]"></i>
+                        </button>
+                        <!-- Sair Mobile -->
+                        <button onclick="handleLogout()" class="text-red-400 hover:text-red-300 p-1.5 rounded-lg bg-red-950/20 border border-red-500/20 transition" title="Sair">
+                            <i class="fa-solid fa-arrow-right-from-bracket text-[10px]"></i>
+                        </button>
+                    </div>
                 </div>
-            </div>
 
-            <!-- SELETOR DE SISTEMA: SOFTCOMSHOP (WEB) vs SOFTSHOP (DESKTOP) -->
-            <div class="flex items-center bg-[#0d1017] p-1 rounded-xl border border-borderBase shadow-inner">
-                <button id="tab-softcomshop" onclick="switchSystem('softcomshop')" class="px-3 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 bg-amber-500/15 text-amber-300 border border-amber-500/30">
-                    <i class="fa-solid fa-cloud text-[11px]"></i>
-                    <span>Softcomshop</span>
-                    <span class="text-[9px] bg-amber-500/20 text-amber-200 px-1.5 py-0.2 rounded font-mono">Web</span>
-                </button>
-                <button id="tab-softshop" onclick="switchSystem('softshop')" class="px-3 py-1 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 transition flex items-center gap-1.5">
-                    <i class="fa-solid fa-desktop text-[11px]"></i>
-                    <span>Softshop</span>
-                    <span class="text-[9px] bg-cyan-950/50 text-cyan-400 border border-cyan-500/30 px-1.5 py-0.2 rounded font-mono">Desktop</span>
-                </button>
-            </div>
+                <!-- Seletor de Sistema: Softcomshop (Web) & Softshop (Desktop) -->
+                <!-- No Mobile ocupa largura total com botões confortáveis de tocar (50% cada) -->
+                <!-- No Desktop fica centralizado de forma elegante -->
+                <div class="w-full md:w-auto flex items-center bg-[#0d1017] p-1 rounded-xl border border-borderBase shadow-inner">
+                    <button id="tab-softcomshop" onclick="switchSystem('softcomshop')" class="flex-1 md:flex-initial px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                        <i class="fa-solid fa-cloud text-[11px]"></i>
+                        <span>Softcomshop</span>
+                        <span class="text-[9px] bg-amber-500/20 text-amber-200 px-1 py-0.2 rounded font-mono">Web</span>
+                    </button>
+                    <button id="tab-softshop" onclick="switchSystem('softshop')" class="flex-1 md:flex-initial px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 transition flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-desktop text-[11px]"></i>
+                        <span>Softshop</span>
+                        <span class="text-[9px] bg-cyan-950/50 text-cyan-400 border border-cyan-500/30 px-1 py-0.2 rounded font-mono">Desktop</span>
+                    </button>
+                </div>
 
-            <div class="flex items-center gap-2.5">
-                <span id="system-badge-subtitle" class="text-xs text-slate-400 hidden lg:inline-block">Softcomshop • 459 tabelas</span>
+                <!-- Botões de Ação Completos para Desktop (md:flex) -->
+                <div class="hidden md:flex items-center gap-2">
+                    <span id="system-badge-subtitle" class="text-xs text-slate-400 hidden xl:inline-block">Softcomshop • 459 tabelas</span>
 
-                <!-- BOTÃO DO MONITOR DE TOKENS -->
-                <button onclick="openTokenMonitorModal()" class="text-xs text-slate-300 hover:text-white px-3 py-1.5 rounded-lg bg-cardBg hover:bg-white/5 border border-borderBase transition flex items-center gap-2 group" title="Monitor de Tokens e Cota da IA">
-                    <i class="fa-solid fa-gauge-high text-amber-400 text-[11px] group-hover:rotate-12 transition-transform"></i>
-                    <span class="font-medium hidden sm:inline">Monitor de Tokens</span>
-                    <span id="header-token-badge" class="flex items-center gap-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded text-[10px] font-mono">
-                        <span id="header-token-dot" class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                        <span id="header-token-count">0 tkn</span>
-                    </span>
-                </button>
+                    <!-- BOTÃO DO MONITOR DE TOKENS DESKTOP -->
+                    <button onclick="openTokenMonitorModal()" class="text-xs text-slate-300 hover:text-white px-3 py-1.5 rounded-lg bg-cardBg hover:bg-white/5 border border-borderBase transition flex items-center gap-2 group" title="Monitor de Tokens e Cota da IA">
+                        <i class="fa-solid fa-gauge-high text-amber-400 text-[11px] group-hover:rotate-12 transition-transform"></i>
+                        <span class="font-medium">Monitor de Tokens</span>
+                        <span id="header-token-badge" class="flex items-center gap-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded text-[10px] font-mono">
+                            <span id="header-token-dot" class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                            <span id="header-token-count">0 tkn</span>
+                        </span>
+                    </button>
 
-                <!-- BOTÃO API KEY -->
-                <button onclick="openApiKeyModal()" class="text-xs text-slate-300 hover:text-white px-2.5 py-1.5 rounded-lg bg-cardBg hover:bg-white/5 border border-borderBase transition flex items-center gap-1.5" title="Chave de API Gemini">
-                    <i class="fa-solid fa-key text-slate-400 text-[10px]"></i>
-                    <span id="btn-api-text" class="hidden sm:inline">Chave</span>
-                </button>
+                    <!-- BOTÃO API KEY DESKTOP -->
+                    <button onclick="openApiKeyModal()" class="text-xs text-slate-300 hover:text-white px-2.5 py-1.5 rounded-lg bg-cardBg hover:bg-white/5 border border-borderBase transition flex items-center gap-1.5" title="Chave de API Gemini">
+                        <i class="fa-solid fa-key text-slate-400 text-[10px]"></i>
+                        <span id="btn-api-text">Chave</span>
+                    </button>
 
-                <!-- BOTÃO RESET CHAT -->
-                <button onclick="clearChat()" title="Nova conversa" class="text-xs text-slate-400 hover:text-white p-2 rounded-lg hover:bg-white/5 transition">
-                    <i class="fa-solid fa-arrow-rotate-right text-[11px]"></i>
-                </button>
+                    <!-- BOTÃO RESET CHAT DESKTOP -->
+                    <button onclick="clearChat()" title="Nova conversa" class="text-xs text-slate-400 hover:text-white p-2 rounded-lg hover:bg-white/5 transition">
+                        <i class="fa-solid fa-arrow-rotate-right text-[11px]"></i>
+                    </button>
 
-                <!-- BOTÃO SAIR -->
-                <button onclick="handleLogout()" title="Sair do sistema" class="text-xs text-red-400 hover:text-red-300 px-2.5 py-1.5 rounded-lg bg-red-950/20 hover:bg-red-950/40 border border-red-500/20 transition flex items-center gap-1.5">
-                    <i class="fa-solid fa-arrow-right-from-bracket text-[10px]"></i>
-                    <span class="hidden sm:inline">Sair</span>
-                </button>
+                    <!-- BOTÃO SAIR DESKTOP -->
+                    <button onclick="handleLogout()" title="Sair do sistema" class="text-xs text-red-400 hover:text-red-300 px-2.5 py-1.5 rounded-lg bg-red-950/20 hover:bg-red-950/40 border border-red-500/20 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-arrow-right-from-bracket text-[10px]"></i>
+                        <span>Sair</span>
+                    </button>
+                </div>
             </div>
         </header>
 
         <!-- Área Principal de Chat -->
-        <main class="flex-1 flex flex-col max-w-3xl w-full mx-auto px-4 py-6 overflow-hidden">
+        <main class="flex-1 flex flex-col max-w-3xl w-full mx-auto px-2.5 sm:px-4 py-3 sm:py-6 overflow-hidden">
             <div id="chat-box" class="flex-1 overflow-y-auto space-y-6 custom-scroll pr-1 pb-6">
                 
                 <!-- Welcome Clean -->
@@ -219,7 +249,7 @@
             </div>
 
             <!-- Input Bar Clean -->
-            <div class="pt-2">
+            <div class="sticky bottom-0 bg-bgApp/95 backdrop-blur-md pt-1.5 pb-2 sm:pb-3 px-1 sm:px-0">
                 <form id="chat-form" onsubmit="sendMessage(event)" class="bg-cardBg rounded-xl border border-borderBase focus-within:border-amber-500/50 transition flex items-center p-1.5 shadow-lg">
                     <input 
                         type="text" 
@@ -244,7 +274,7 @@
 
     <!-- MODAL MONITOR DE TOKENS & COTA DA IA -->
     <div id="token-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-cardBg border border-borderBase rounded-2xl max-w-xl w-full p-6 shadow-2xl relative custom-scroll max-h-[90vh] overflow-y-auto">
+        <div class="bg-cardBg border border-borderBase rounded-2xl max-w-xl w-full p-4 sm:p-6 shadow-2xl relative custom-scroll max-h-[92vh] overflow-y-auto">
             <!-- Glow Decorativo -->
             <div class="absolute -top-10 -right-10 w-36 h-36 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
@@ -753,6 +783,22 @@
         }
         updateBtnText();
 
+        function goHome(e) {
+            if (e) e.preventDefault();
+            closeApiKeyModal();
+            closeTokenMonitorModal();
+            clearChat();
+            const input = document.getElementById('user-input');
+            if (input) {
+                input.value = '';
+                input.focus();
+            }
+            const box = document.getElementById('chat-box');
+            if (box) {
+                box.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+
         function clearChat() {
             const box = document.getElementById('chat-box');
             box.innerHTML = '';
@@ -989,7 +1035,7 @@
                     <!-- Bloco Único de Código Clean -->
                     <div class="rounded-xl border border-borderBase bg-[#090b10] overflow-hidden">
                         <div class="flex items-center justify-between border-b border-borderBase px-3.5 py-2 bg-cardBg/60 text-[11px] text-slate-400">
-                            <span class="font-mono text-slate-400">mysql</span>
+                            <span class="font-mono text-slate-400">${currentSystem === "softshop" ? "sql-server (t-sql)" : "mysql"}</span>
                             <button id="${btnId}" onclick="copySqlClean('${codeId}', '${btnId}')" class="text-slate-400 hover:text-white px-2 py-0.5 rounded hover:bg-white/5 transition flex items-center gap-1">
                                 <i class="fa-regular fa-copy text-[10px]"></i> Copiar
                             </button>
