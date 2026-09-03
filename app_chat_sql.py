@@ -1241,6 +1241,125 @@ LIMIT 10;"""
         "explicacao": "Consulta base com as últimas vendas registradas na base aplicando os filtros padrão de empresa e exclusão lógica."
     }
 
+def generate_softshop_response(message):
+    p = (message or "").lower()
+    usage = {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0,
+        "source": "softshop_rag_local",
+        "status": "success",
+        "quota_exhausted": False
+    }
+
+    if any(k in p for k in ["delet", "cancel", "exclui", "apag"]):
+        return {
+            "tipo_operacao": "DELETE",
+            "tabelas_utilizadas": ["Cadastro de Vendas", "contas a receber", "Vendas Efetuadas"],
+            "explicacao": "Procedimento seguro de cancelamento no Softshop Desktop (SQL Server). Valida se a venda existe, seu total e se há parcelas já quitadas no contas a receber. Em seguida, executa transação defensiva T-SQL marcando a venda e parcelas pendentes como canceladas sem quebrar a integridade referencial.",
+            "sql_validacao": """-- 1. Validação prévia da Venda no Softshop Desktop
+SELECT 
+    cv.[Código da Venda],
+    cv.[Data da Venda],
+    cv.[Situação],
+    cv.[Total da Venda],
+    ISNULL(cc.[Nome do Cliente], 'Consumidor') AS Cliente,
+    cr.[Valor] AS ParcelaValor,
+    cr.[Recebido] AS ParcelaRecebida
+FROM [Cadastro de Vendas] cv WITH (NOLOCK)
+LEFT JOIN [Cadastro de Clientes] cc WITH (NOLOCK) ON cv.[Nome do Cliente] = cc.[Código do Cliente]
+LEFT JOIN [contas a receber] cr WITH (NOLOCK) ON cv.[Código da Venda] = cr.[Venda]
+WHERE cv.[Código da Venda] = @VendaId;""",
+            "sql_final": """-- 2. Cancelamento Seguro com Transação T-SQL no Softshop Desktop
+BEGIN TRANSACTION;
+
+-- Atualiza o cabeçalho da venda para cancelada
+UPDATE [Cadastro de Vendas]
+SET 
+    [Situação] = 'CANCELADA',
+    [Cancelada] = 1,
+    [Observações] = CONCAT([Observações], ' - Cancelada em ', CONVERT(VARCHAR(19), GETDATE(), 120))
+WHERE [Código da Venda] = @VendaId;
+
+-- Cancela as parcelas pendentes no contas a receber
+UPDATE [contas a receber]
+SET 
+    [Cancelada] = 1,
+    [Histórico] = CONCAT([Histórico], ' [CANCELADO]')
+WHERE [Venda] = @VendaId
+  AND ([Recebido] IS NULL OR [Recebido] = 0);
+
+COMMIT TRANSACTION;""",
+            "usage": usage
+        }
+
+    if any(k in p for k in ["estoqu", "mercador", "produt", "prec", "preço"]):
+        return {
+            "tipo_operacao": "SELECT",
+            "tabelas_utilizadas": ["Cadastro de Mercadorias"],
+            "explicacao": "Consulta de mercadorias do Softshop Desktop listando saldo de estoque, preço de venda e fabricante, filtrando mercadorias ativas ([Desativado] = 0).",
+            "sql_validacao": "",
+            "sql_final": """-- Mercadorias e Saldo de Estoque no Softshop Desktop
+SELECT TOP 50
+    cm.[Código da Mercadoria],
+    cm.[Mercadoria],
+    cm.[Fabricante],
+    cm.[Unidades em Estoque],
+    cm.[Preço de Venda],
+    cm.[Preço C] AS PrecoCusto,
+    cm.[Cód Barra],
+    cm.[Grupo]
+FROM [Cadastro de Mercadorias] cm WITH (NOLOCK)
+WHERE ISNULL(cm.[Desativado], 0) = 0
+ORDER BY cm.[Unidades em Estoque] ASC;""",
+            "usage": usage
+        }
+
+    if any(k in p for k in ["receber", "inadimpl", "divida", "aberto"]):
+        return {
+            "tipo_operacao": "SELECT",
+            "tabelas_utilizadas": ["contas a receber", "Cadastro de Clientes", "Cadastro de Vendas"],
+            "explicacao": "Listagem de títulos a receber vencidos e não quitados no Softshop Desktop vinculando com os dados de contato do cliente.",
+            "sql_validacao": "",
+            "sql_final": """-- Contas a Receber Vencidas no Softshop Desktop
+SELECT TOP 50
+    cr.[Código] AS Titulo,
+    cr.[Venda],
+    cc.[Nome do Cliente],
+    cc.[Fone Resid] AS Telefone,
+    cr.[Valor],
+    cr.[Vencimento],
+    DATEDIFF(DAY, cr.[Vencimento], GETDATE()) AS DiasAtraso
+FROM [contas a receber] cr WITH (NOLOCK)
+INNER JOIN [Cadastro de Clientes] cc WITH (NOLOCK) ON cr.[Cliente] = cc.[Código do Cliente]
+WHERE (cr.[Recebido] IS NULL OR cr.[Recebido] = 0)
+  AND ISNULL(cr.[Cancelada], 0) = 0
+  AND cr.[Vencimento] < GETDATE()
+ORDER BY cr.[Vencimento] ASC;""",
+            "usage": usage
+        }
+
+    return {
+        "tipo_operacao": "SELECT",
+        "tabelas_utilizadas": ["Cadastro de Vendas", "Cadastro de Clientes", "Vendas Efetuadas"],
+        "explicacao": "Consulta das últimas vendas registradas no Softshop Desktop (SQL Server) com dados do cliente e status da venda utilizando WITH (NOLOCK).",
+        "sql_validacao": "",
+        "sql_final": """-- Últimas Vendas Registradas no Softshop Desktop
+SELECT TOP 20
+    cv.[Código da Venda],
+    cv.[Data da Venda],
+    ISNULL(cc.[Nome do Cliente], 'Consumidor') AS Cliente,
+    cv.[Total da Venda],
+    cv.[Desconto],
+    cv.[Total Liquido],
+    cv.[Situação],
+    cv.[Forma de Pagamento]
+FROM [Cadastro de Vendas] cv WITH (NOLOCK)
+LEFT JOIN [Cadastro de Clientes] cc WITH (NOLOCK) ON cv.[Nome do Cliente] = cc.[Código do Cliente]
+ORDER BY cv.[Código da Venda] DESC;""",
+        "usage": usage
+    }
+
 class RequestHandler(BaseHTTPRequestHandler):
     def _get_client_ip(self):
         """Identifica o IP real do cliente com suporte a proxies confiáveis."""
@@ -1418,20 +1537,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 active_system = data.get("system", "softcomshop")
 
                 if active_system == "softshop":
-                    res = {
-                        "tipo_operacao": "SELECT",
-                        "tabelas_utilizadas": ["softshop_desktop"],
-                        "explicacao": "Módulo Softshop Desktop selecionado. O sistema está pronto e aguardando você fornecer os dados de acesso ao banco desktop (SGBD como Firebird, MySQL, SQL Server, PostgreSQL, Host, Porta e Credenciais) ou os scripts DDL das tabelas. Assim que você me passar o acesso, mapearei 100% das tabelas, campos e relacionamentos para gerar queries nativas e precisas!",
-                        "sql_validacao": "",
-                        "sql_final": "-- Módulo Softshop (Desktop) aguardando acesso\n-- Por favor, envie os dados de conexão ou o script DDL das tabelas para mapeamento completo de colunas e relacionamentos.",
-                        "usage": {
-                            "prompt_tokens": 0,
-                            "completion_tokens": 0,
-                            "total_tokens": 0,
-                            "source": "softshop_desktop",
-                            "status": "waiting_schema"
-                        }
-                    }
+                    res = generate_softshop_response(msg)
                 elif api_key:
                     try:
                         ai_res = call_gemini_api(msg, api_key)
