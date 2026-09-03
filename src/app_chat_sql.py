@@ -980,47 +980,62 @@ COMMIT;
             "explicacao": "No Softcomshop, os preços e saldos de estoque são vinculados por filial na tabela `produto_empresa_grade` relacionada a `produto_empresa` e `produto`. Na aba **1. Validação**, confira o cadastro e valores atuais. Na aba **2. Execução**, aplique a alteração dentro de uma transação segura."
         }
 
-    # 2. DELETE / EXCLUSÃO DE VENDAS (2 ETAPAS)
-    if is_delete and ("venda" in p or "pedido" in p):
-        sql_val = """-- 1. Consulta de Validação (Execute para conferir os registros antes de deletar)
+    # 2. DELETE / EXCLUSÃO DE VENDAS (2 ETAPAS COM VALIDAÇÃO FISCAL E FINANCEIRA)
+    if is_delete and ("venda" in p or "pedido" in p or "seguran" in p):
+        sql_val = """-- 1. Validação Prévia (Conferência de Status, NF-e Autorizada e Parcelas Quitadas)
 SELECT 
-    id AS venda_id, 
-    status, 
-    valor_total, 
-    total_pagamento, 
-    cliente_id, 
-    nfe_id, 
-    api_data_hora_venda, 
-    deleted_at
-FROM venda
-WHERE id = 100 -- Informe o ID da venda
-  AND empresa_id = 1 
-  AND deleted_at IS NULL;"""
+    v.id AS venda_id,
+    v.status AS status_venda,
+    v.valor_total,
+    v.total_pagamento,
+    v.api_data_hora_venda AS data_venda,
+    nfe.id AS nfe_id,
+    nfe.numero_nfe,
+    nfe.recibo_situacao AS situacao_nfe,
+    CASE 
+        WHEN nfe.recibo_situacao = 'AUTORIZADA' THEN '⚠️ ATENÇÃO: NF-e emitida e autorizada na SEFAZ. Cancele o documento fiscal antes!'
+        WHEN nfe.recibo_situacao = 'CONTINGENCIA' THEN '⚠️ Documento fiscal pendente em contingência.'
+        WHEN nfe.id IS NOT NULL THEN 'Documento fiscal vinculado.'
+        ELSE 'Sem documento fiscal vinculado.'
+    END AS status_fiscal,
+    COUNT(fp.id) AS total_parcelas,
+    SUM(CASE WHEN fp.valor_pago >= fp.valor_parcela THEN 1 ELSE 0 END) AS parcelas_quitadas,
+    CASE 
+        WHEN SUM(CASE WHEN fp.valor_pago > 0 THEN 1 ELSE 0 END) > 0 THEN '⚠️ Possui parcelas com recebimento efetuado.'
+        ELSE 'Nenhuma parcela baixada.'
+    END AS status_financeiro
+FROM venda v
+LEFT JOIN nota_fiscal_eletronica nfe ON v.nfe_id = nfe.id
+LEFT JOIN financeiro_parcela fp ON fp.venda_id = v.id AND fp.deleted_at IS NULL
+WHERE v.id = :id -- Substitua :id pelo ID da venda desejada
+  AND v.empresa_id = 1
+  AND v.deleted_at IS NULL
+GROUP BY v.id, v.status, v.valor_total, v.total_pagamento, v.api_data_hora_venda, nfe.id, nfe.numero_nfe, nfe.recibo_situacao;"""
 
-        sql_final = """-- 2. Comando de Exclusão (Soft Delete com Transação)
+        sql_final = """-- 2. Exclusão Lógica com Transação Segura (Soft Delete)
 START TRANSACTION;
 
--- Recomendado: Soft Delete preservando histórico fiscal e contábil
+-- Executa a exclusão lógica da venda preservando integridade referencial
 UPDATE venda 
 SET deleted_at = NOW(), 
     status = 'CANCELADA', 
     updated_at = NOW() 
-WHERE id = 100 
+WHERE id = :id -- Substitua :id pelo ID da venda
   AND empresa_id = 1 
   AND deleted_at IS NULL;
 
--- Confirmar se a contagem de linhas estiver correta:
+-- Confirmar alteração caso a validação esteja de acordo:
 COMMIT;
 
--- Caso queira desfazer:
+-- Caso queira reverter:
 -- ROLLBACK;"""
 
         return {
             "tipo_operacao": "DELETE",
             "sql_validacao": sql_val,
             "sql_final": sql_final,
-            "tabelas_utilizadas": ["venda", "venda_item", "financeiro_parcela"],
-            "explicacao": "Para deletar uma venda com segurança, utilize primeiro a aba **Validação (SELECT)** para auditar os registros afetados. Em seguida, utilize a aba **Execução** para aplicar o Soft Delete dentro de uma transação segura."
+            "tabelas_utilizadas": ["venda", "nota_fiscal_eletronica", "financeiro_parcela"],
+            "explicacao": "Para deletar uma venda com total conformidade no Softcomshop, a query de validação prévia verifica o status da venda, se há documento fiscal (NF-e/NFC-e) já autorizado na SEFAZ e se as parcelas financeiras já foram baixadas. A exclusão final é executada via exclusão lógica (deleted_at = NOW()) com status CANCELADA dentro de uma transação segura."
         }
 
     # 3. UPDATE / CANCELAMENTO DE VENDAS (2 ETAPAS)
