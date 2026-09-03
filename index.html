@@ -173,7 +173,7 @@
                             <span class="text-[9px] bg-amber-500/20 text-amber-200 px-1 py-0.2 rounded font-mono">Web</span>
                         </button>
                         <button id="tab-softshop" onclick="switchSystem('softshop')" class="px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 transition flex items-center justify-center gap-1.5 border border-transparent">
-                            <i class="fa-solid fa-desktop text-[11px]"></i>
+                            <i class="fa-solid fa-computer text-[11px]"></i>
                             <span>Softshop</span>
                             <span class="text-[9px] bg-cyan-950/50 text-cyan-400 border border-cyan-500/30 px-1 py-0.2 rounded font-mono">Desktop</span>
                         </button>
@@ -219,11 +219,19 @@
             <div id="chat-box" class="flex-1 overflow-y-auto space-y-6 custom-scroll pr-1 pb-6">
                 
                 <!-- Welcome Clean -->
-                <div id="welcome-card" class="text-center py-16 px-4">
-                    <img src="logo.jpg" alt="Logo" class="w-16 h-16 rounded-2xl mx-auto mb-4 object-cover border border-white/10 shadow-lg" />
-                    <h1 class="text-xl font-semibold text-white mb-2 tracking-tight">Bem-vindo, <span class="text-amber-400 font-mono">Especialista</span>!</h1>
+                <div id="welcome-card" class="text-center py-12 sm:py-14 px-4">
+                    <div class="w-16 h-16 rounded-2xl mx-auto mb-4 bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-400 shadow-xl shadow-amber-500/10 relative">
+                        <i class="fa-solid fa-globe text-3xl"></i>
+                        <span class="absolute -bottom-1 -right-1 bg-amber-500 text-slate-950 rounded-full w-5 h-5 flex items-center justify-center text-[10px] shadow-sm font-bold border-2 border-[#090b10]" title="Sistema Web na Nuvem">
+                            <i class="fa-solid fa-cloud text-[9px]"></i>
+                        </span>
+                    </div>
+                    <div class="flex items-center justify-center gap-2 mb-2">
+                        <h1 class="text-lg sm:text-xl font-bold text-white tracking-tight">Módulo <span class="text-amber-400 font-mono">Softcomshop Web</span></h1>
+                        <span class="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono">WEB</span>
+                    </div>
                     <p class="text-xs text-slate-400 max-w-md mx-auto leading-relaxed mb-6">
-                        Estrutura oficial de <strong>459 tabelas e 6.600 campos</strong> conectada no Supabase. Pergunte sobre consultas, exclusões ou atualizações com validação prévia.
+                        Estrutura oficial de <strong>459 tabelas e 6.600 campos</strong> (MySQL Web). Consultas otimizadas com multi-empresa e exclusão lógica segura.
                     </p>
 
                     <div class="flex flex-wrap justify-center gap-2 max-w-lg mx-auto">
@@ -890,15 +898,18 @@
 
             if (currentSystem === 'softshop') {
                 welcome.innerHTML = `
-                    <div class="w-14 h-14 rounded-2xl mx-auto mb-4 bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shadow-lg shadow-cyan-500/5">
-                        <i class="fa-solid fa-desktop text-2xl"></i>
+                    <div class="w-16 h-16 rounded-2xl mx-auto mb-4 bg-cyan-500/10 border border-cyan-500/25 flex items-center justify-center text-cyan-400 shadow-xl shadow-cyan-500/10 relative">
+                        <i class="fa-solid fa-computer text-3xl"></i>
+                        <span class="absolute -bottom-1 -right-1 bg-cyan-500 text-slate-950 rounded-full w-5 h-5 flex items-center justify-center text-[10px] shadow-sm font-bold border-2 border-[#090b10]" title="Sistema Desktop Instalado">
+                            <i class="fa-solid fa-hard-drive text-[9px]"></i>
+                        </span>
                     </div>
                     <div class="flex items-center justify-center gap-2 mb-2">
-                        <h1 class="text-lg font-bold text-white tracking-tight">Módulo <span class="text-cyan-400 font-mono">Softshop Desktop</span></h1>
+                        <h1 class="text-lg sm:text-xl font-bold text-white tracking-tight">Módulo <span class="text-cyan-400 font-mono">Softshop Desktop</span></h1>
                         <span class="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-mono">DESKTOP</span>
                     </div>
                     <p class="text-xs text-slate-400 max-w-md mx-auto leading-relaxed mb-6">
-                        Base oficial <strong>BaseLavanderiaPandaNovo</strong> conectada (SQL Server 2019) com <strong>642 tabelas e 14.234 campos</strong> mapeados. Consultas T-SQL com colchetes e validações prévias ativas.
+                        Base oficial <strong>BaseLavanderiaPandaNovo</strong> (SQL Server Desktop) com <strong>642 tabelas e 14.234 campos</strong> mapeados. Consultas T-SQL defensivas com colchetes e validações.
                     </p>
 
                     <div class="flex flex-wrap justify-center gap-2 max-w-lg mx-auto">
@@ -918,10 +929,18 @@
                 `;
             } else {
                 welcome.innerHTML = `
-                    <img src="logo.jpg" alt="Logo" class="w-16 h-16 rounded-2xl mx-auto mb-4 object-cover border border-white/10 shadow-lg" />
-                    <h1 class="text-xl font-semibold text-white mb-2 tracking-tight">Bem-vindo, <span class="text-amber-400 font-mono">Especialista</span>!</h1>
+                    <div class="w-16 h-16 rounded-2xl mx-auto mb-4 bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-400 shadow-xl shadow-amber-500/10 relative">
+                        <i class="fa-solid fa-globe text-3xl"></i>
+                        <span class="absolute -bottom-1 -right-1 bg-amber-500 text-slate-950 rounded-full w-5 h-5 flex items-center justify-center text-[10px] shadow-sm font-bold border-2 border-[#090b10]" title="Sistema Web na Nuvem">
+                            <i class="fa-solid fa-cloud text-[9px]"></i>
+                        </span>
+                    </div>
+                    <div class="flex items-center justify-center gap-2 mb-2">
+                        <h1 class="text-lg sm:text-xl font-bold text-white tracking-tight">Módulo <span class="text-amber-400 font-mono">Softcomshop Web</span></h1>
+                        <span class="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono">WEB</span>
+                    </div>
                     <p class="text-xs text-slate-400 max-w-md mx-auto leading-relaxed mb-6">
-                        Estrutura oficial de <strong>459 tabelas e 6.600 campos</strong> conectada no Supabase. Pergunte sobre consultas, exclusões ou atualizações com validação prévia.
+                        Estrutura oficial de <strong>459 tabelas e 6.600 campos</strong> (MySQL Web). Consultas otimizadas com multi-empresa e exclusão lógica segura.
                     </p>
 
                     <div class="flex flex-wrap justify-center gap-2 max-w-lg mx-auto">
