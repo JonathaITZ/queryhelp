@@ -550,7 +550,7 @@ async function callGeminiWithFailover(message, keysConfig, system = 'softcomshop
           if (res.quota_exhausted) paidQuotaExhausted = true;
           continue; // Tenta próxima chave paga
         }
-        if (res.sql_final || res.sql) {
+        if (res.sql_final || res.sql || res.explicacao) {
           res.usage = res.usage || {};
           res.usage.tier = 'paid';
           res.usage.tier_name = 'Chave Paga (Paid Tier)';
@@ -570,7 +570,7 @@ async function callGeminiWithFailover(message, keysConfig, system = 'softcomshop
         if (res._error) {
           continue; // Tenta próxima chave gratuita
         }
-        if (res.sql_final || res.sql) {
+        if (res.sql_final || res.sql || res.explicacao) {
           res.usage = res.usage || {};
           res.usage.tier = 'free';
           res.usage.tier_name = triedPaid ? 'Chave Gratuita (Fallback Ativado)' : 'Chave Gratuita (Free Tier)';
@@ -765,7 +765,7 @@ module.exports = async function handler(req, res) {
         if (geminiRes.quota_exhausted) {
           geminiQuotaExhausted = true;
         }
-      } else if (geminiRes.sql_final || geminiRes.sql) {
+      } else if (geminiRes.sql_final || geminiRes.sql || geminiRes.explicacao) {
         return res.status(200).json(sanitizeData(geminiRes));
       }
     }
@@ -780,6 +780,26 @@ module.exports = async function handler(req, res) {
     // 5. MOTOR DETERMINÍSTICO DE FALLBACK AUDITADO (SCHEMA RAG)
     // ====================================================================
     const p = message.toLowerCase();
+    // LOTE E SERIAL NO SOFTSHOP DESKTOP
+    if (p.includes("lote") || p.includes("serial") || p.includes("serie") || p.includes("rastre")) {
+      return {
+        tipo_operacao: "INFO",
+        tabelas_utilizadas: [
+          "[Serial_Estoque]",
+          "[Serial_Ajustes]",
+          "[Serial_Balanco]",
+          "[Cadastro de Mercadorias]",
+          "[Vendas Efetuadas]",
+          "[Empresa]"
+        ],
+        explicacao: "No **Softshop Desktop (SQL Server)**, o controle de serial e lote é gerenciado por:\n\n• **`[Serial_Estoque]`**: Tabela principal de saldo e rastreio individual de cada Serial em estoque;\n• **`[Serial_Ajustes]`** e **`[Serial_Balanco]`**: Histórico de movimentações, ajustes e balanço de seriais;\n• **`[Vendas Efetuadas]`**: Registra o serial faturado nas colunas `[Serial]`, `[Serial_Fabricacao]`, `[Serial_Validade]`;\n• **`[Cadastro de Mercadorias]`**: Possui o campo `[SolicitarSerial]` (bit) que define se o produto exige serial na venda/entrada;\n• **`[Empresa]`**: Configurações globais `[AtivarLoteSerial]`, `[BaixarLote]` e `[BloquearEstoqueSerial]`.",
+        sql_validacao: null,
+        sql_final: null,
+        usage: fallbackUsage
+      };
+    }
+
+
     const isDelete = p.includes("delete") || p.includes("deletar") || p.includes("excluir") || p.includes("apagar") || p.includes("cancelar") || p.includes("remover");
     const isUpdate = p.includes("update") || p.includes("alterar") || p.includes("atualizar") || p.includes("mudar") || p.includes("modificar") || p.includes("ajust");
 
@@ -793,11 +813,14 @@ module.exports = async function handler(req, res) {
     };
 
     // DETECTOR DE PERGUNTAS INFORMATIVAS SOBRE O SCHEMA ("qual a tabela...", "onde fica...", "encontre a tabela...")
-    const isInfoOnly = p.includes("qual o nome da tabela") || p.includes("qual é o nome da tabela") || 
-                       p.includes("qual a tabela") || p.includes("quais as tabelas") || p.includes("quais tabelas") ||
-                       p.includes("encontre a tabela") || p.includes("qual tabela") ||
-                       p.includes("onde fica") || p.includes("onde é salvo") || p.includes("onde sao salvos") ||
-                       p.includes("onde e salvo") || p.includes("onde estão salvos") || p.includes("qual o campo");
+    const pNorm = p.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const isInfoOnly = pNorm.includes("qual o nome da tabela") || pNorm.includes("qual e o nome da tabela") || 
+                       pNorm.includes("qual a tabela") || pNorm.includes("quais as tabelas") || pNorm.includes("quais tabelas") ||
+                       pNorm.includes("quais sao as tabelas") || pNorm.includes("quais sao tabelas") ||
+                       pNorm.includes("encontre a tabela") || pNorm.includes("qual tabela") ||
+                       pNorm.includes("onde fica") || pNorm.includes("onde e salvo") || pNorm.includes("onde sao salvos") ||
+                       pNorm.includes("onde estao salvos") || pNorm.includes("qual o campo") || pNorm.includes("tabela") ||
+                       pNorm.includes("tabelas");
 
     if (isInfoOnly) {
       // 1. MARKETPLACE
@@ -871,6 +894,25 @@ module.exports = async function handler(req, res) {
           usage: fallbackUsage
         }));
       }
+
+      // 7. LOTE E SERIAL / NÚMERO DE SÉRIE / RASTREABILIDADE
+      if (p.includes("lote") || p.includes("serial") || p.includes("serie") || p.includes("rastre") || p.includes("validade")) {
+        return res.status(200).json(sanitizeData({
+          tipo_operacao: "INFO",
+          tabelas_utilizadas: [
+            "compra_item",
+            "produto_empresa_grade",
+            "nota_fiscal_eletronica_especifico_medicamento_rastro",
+            "produto_especifico_veiculo",
+            "venda_ordem_servico"
+          ],
+          explicacao: "No **Softcomshop (MySQL)**, os registros de lote e serial ficam organizados assim:\n\n• **Lote de Compra e Validade:** Na tabela **`compra_item`** (colunas `lote_numero`, `lote_quantidade`, `lote_data_fabricacao`, `lote_data_validade`), vinculado à grade em **`produto_empresa_grade`** (`lote_codigo_agregacao`).\n• **Rastreabilidade Fiscal (NF-e/Medicamentos):** Na tabela **`nota_fiscal_eletronica_especifico_medicamento_rastro`** (colunas `especifico_numero_lote`, `especifico_quantidade_lote`).\n• **Número de Série / Equipamentos:** Em **`venda_ordem_servico`** (`equipamento_numero_serie`), **`produto_especifico_veiculo`** (`especifico_numero_serie`) e **`produto_especifico_armamento`**.",
+          sql_validacao: null,
+          sql_final: null,
+          usage: fallbackUsage
+        }));
+      }
+
     }
 
 
@@ -1025,25 +1067,26 @@ ORDER BY v.id DESC;`,
       }));
     }
 
-    // FALLBACK GERAL: ÚLTIMAS VENDAS
+    // FALLBACK INTELIGENTE: APENAS RETORNA VENDAS SE A PERGUNTA MENCIONAR VENDAS!
+    const isExplicitSale = p.includes("venda") || p.includes("pedido") || p.includes("cupom") || p.includes("pdv");
+    if (isExplicitSale) {
+      return res.status(200).json(sanitizeData({
+        tipo_operacao: "SELECT",
+        tabelas_utilizadas: ["venda"],
+        explicacao: "Consulta base com as últimas vendas registradas aplicando filtros recomendados de empresa e exclusão lógica.",
+        sql_validacao: "",
+        sql_final: `-- Últimas Vendas Registradas\nSELECT \n    v.id AS venda_id, \n    v.api_data_hora_venda AS data_venda, \n    v.status, \n    v.valor_total, \n    v.total_desconto,\n    v.total_pagamento\nFROM venda v\nWHERE v.deleted_at IS NULL \n  AND v.empresa_id = 1\nORDER BY v.id DESC\nLIMIT 10;`,
+        usage: fallbackUsage
+      }));
+    }
+
+    // RESPOSTA HUMANA PARA TERMOS NÃO RECONHECIDOS (SEM FORÇAR QUERY DE VENDAS DESCONEXA)
     return res.status(200).json(sanitizeData({
-      tipo_operacao: "SELECT",
-      tabelas_utilizadas: ["venda"],
-      explicacao: "Consulta base com as últimas vendas registradas aplicando filtros recomendados de empresa e exclusão lógica.",
-      sql_validacao: "",
-      sql_final: `-- Últimas Vendas Registradas
-SELECT 
-    v.id AS venda_id, 
-    v.api_data_hora_venda AS data_venda, 
-    v.status, 
-    v.valor_total, 
-    v.total_desconto,
-    v.total_pagamento
-FROM venda v
-WHERE v.deleted_at IS NULL 
-  AND v.empresa_id = 1
-ORDER BY v.id DESC
-LIMIT 10;`,
+      tipo_operacao: "INFO",
+      tabelas_utilizadas: [],
+      explicacao: "Não encontrei uma correspondência exata para essa consulta no motor local de contingência.\n\n💡 **Para perguntas complexas:** Conecte sua chave da API Gemini do Google AI Studio no botão **\`🔑 Chave\`** no topo (ou informe sua chave para configurarmos no servidor). Com a IA ativada, ela interpreta qualquer dúvida profunda navegando nas mais de 459 tabelas do sistema!",
+      sql_validacao: null,
+      sql_final: null,
       usage: fallbackUsage
     }));
 
