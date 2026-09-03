@@ -185,14 +185,218 @@ function checkRateLimit(ip) {
 }
 
 // ====================================================================
+
+// ====================================================================
+// 2.2 SCHEMA RAG E DIRETRIZES: SOFTSHOP DESKTOP (MICROSOFT SQL SERVER)
+// ====================================================================
+const SOFTSHOP_SYSTEM_PROMPT = `Você é o Especialista Sênior em Banco de Dados do Softshop Desktop (Microsoft SQL Server 2019 / T-SQL).
+Sua missão é gerar consultas SQL Server extremamente precisas, seguras e aderentes à estrutura de 642 tabelas do banco 'BaseLavanderiaPandaNovo' do Softshop Desktop.
+
+DIRETRIZES TÉCNICAS OBRIGATÓRIAS (SOFTSHOP DESKTOP - SQL SERVER):
+1. Identificadores com Colchetes [ ]:
+   - Como tabelas e colunas possuem espaços e acentos, SEMPRE utilize colchetes: [Cadastro de Vendas], [Vendas Efetuadas], [Cadastro de Mercadorias], [Cadastro de Clientes], [contas a receber], [contas a pagar], [Somatorio_Caixa].
+2. Leituras Concorrentes Otimizadas:
+   - Adicione WITH (NOLOCK) em consultas SELECT para não travar o caixa ou os terminais do Softshop Desktop.
+3. Operações Críticas (UPDATE / DELETE):
+   - NUNCA faça DELETE físico se houver histórico financeiro ou fiscal.
+   - Para cancelamento de vendas: Atualize [Cadastro de Vendas].[Situação] = 'CANCELADA', [Cancelada] = 1 e as parcelas em [contas a receber].[Cancelada] = 1.
+   - Use sempre transações T-SQL: BEGIN TRANSACTION; ... COMMIT TRANSACTION;
+4. Relacionamentos Oficiais (JOINs):
+   - [Cadastro de Vendas] cv INNER JOIN [Vendas Efetuadas] ve ON cv.[Código da Venda] = ve.[Código da Venda]
+   - [Vendas Efetuadas] ve INNER JOIN [Cadastro de Mercadorias] cm ON ve.[Código da Mercadoria] = cm.[Código da Mercadoria]
+   - [Cadastro de Vendas] cv LEFT JOIN [Cadastro de Clientes] cc ON cv.[Nome do Cliente] = cc.[Código do Cliente]
+   - [Cadastro de Vendas] cv LEFT JOIN [contas a receber] cr ON cv.[Código da Venda] = cr.[Venda]
+5. Formato de Saída: Retorne estritamente o JSON no schema exigido.`;
+
+const SOFTSHOP_SCHEMAS = {
+  vendas: `
+-- TABELA: [Cadastro de Vendas] (491.472 registros)
+-- PK: [Código da Venda] (int)
+-- FKs: [Nome do Cliente] -> [Cadastro de Clientes]([Código do Cliente]), [Vendedor] -> [cadastro de vendedores]([Código do Vendedor])
+-- Colunas: [Código da Venda], [Data da Venda], [Nome do Cliente], [Total da Venda], [Total Liquido], [Desconto], [Situação], [Cancelada], [Finalizada], [Loja], [Forma de Pagamento], [Observações]
+
+-- TABELA: [Vendas Efetuadas] (1.911.454 registros)
+-- PK: [contar] (int IDENTITY)
+-- FKs: [Código da Venda] -> [Cadastro de Vendas], [Código da Mercadoria] -> [Cadastro de Mercadorias]
+-- Colunas: [contar], [Código da Venda], [Código da Mercadoria], [Produto], [Quantidade], [Preço], [Desconto], [PrecoBruto], [CR_PrecoTotal], [Tam], [Cores], [Codbarras], [Situação]
+`,
+  produtos: `
+-- TABELA: [Cadastro de Mercadorias] (572 registros)
+-- PK: [Código da Mercadoria] (int IDENTITY)
+-- FKs: [Fornecedor] -> [Fornecedores], [Grupo] -> [grp]
+-- Colunas: [Código da Mercadoria], [Mercadoria], [Fabricante], [Preço de Venda], [Preço C], [Preço Compra], [Unidades em Estoque], [DataEstoque], [Medida], [Cód Barra], [Grupo], [Desativado]
+`,
+  clientes: `
+-- TABELA: [Cadastro de Clientes] (3.536 registros)
+-- PK: [Código do Cliente] (int IDENTITY)
+-- Colunas: [Código do Cliente], [Nome do Cliente], [Razão Social], [CGC] (CPF/CNPJ), [Inscrição Estadual], [Endereço], [Bairro], [Cidade], [UF], [CEP], [Fone Resid], [Contato], [Limite Crédito], [Bloquear Cliente], [Desativado]
+`,
+  financeiro: `
+-- TABELA: [contas a receber] (132.373 registros)
+-- PK: [Código]
+-- FKs: [Venda] -> [Cadastro de Vendas]([Código da Venda]), [Cliente] -> [Cadastro de Clientes]([Código do Cliente])
+-- Colunas: [Código], [Venda], [Cliente], [Valor], [Vencimento], [DataRecebimento], [Recebido], [Cancelada], [Histórico], [TipoPagamento]
+
+-- TABELA: [contas a pagar] (4.839 registros)
+-- PK: [Código]
+-- Colunas: [Código], [Fornecedor], [Documento], [Valor], [Vencimento], [DataPagamento], [Pago], [Histórico]
+
+-- TABELA: [Somatorio_Caixa] (5.291 registros)
+-- Colunas: [Data], [Valor], [Tipo], [Histórico], [Operador], [Loja]
+`
+};
+
+function retrieveSoftshopSchema(query) {
+  const q = (query || "").toLowerCase();
+  let schema = "-- CONTEXTO ESTRUTURAL SOFTSHOP DESKTOP (SQL SERVER)\n";
+  if (q.includes("vend") || q.includes("pedido") || q.includes("cancel") || q.includes("delet") || q.includes("cupom")) {
+    schema += SOFTSHOP_SCHEMAS.vendas + "\n" + SOFTSHOP_SCHEMAS.clientes;
+  } else if (q.includes("produt") || q.includes("mercador") || q.includes("estoqu") || q.includes("prec") || q.includes("preç")) {
+    schema += SOFTSHOP_SCHEMAS.produtos + "\n" + SOFTSHOP_SCHEMAS.vendas;
+  } else if (q.includes("client") || q.includes("cpf") || q.includes("cnpj") || q.includes("contat")) {
+    schema += SOFTSHOP_SCHEMAS.clientes + "\n" + SOFTSHOP_SCHEMAS.vendas;
+  } else if (q.includes("financ") || q.includes("receber") || q.includes("pagar") || q.includes("caixa") || q.includes("inadimpl")) {
+    schema += SOFTSHOP_SCHEMAS.financeiro + "\n" + SOFTSHOP_SCHEMAS.vendas;
+  } else {
+    schema += SOFTSHOP_SCHEMAS.vendas + "\n" + SOFTSHOP_SCHEMAS.produtos + "\n" + SOFTSHOP_SCHEMAS.financeiro;
+  }
+  return schema;
+}
+
+function generateSoftshopFallback(message, isQuotaExhausted) {
+  const p = (message || "").toLowerCase();
+  const usage = {
+    prompt_tokens: 0,
+    completion_tokens: 0,
+    total_tokens: 0,
+    source: "softshop_rag_local",
+    status: "success",
+    quota_exhausted: !!isQuotaExhausted
+  };
+
+  if (p.includes("delet") || p.includes("cancel") || p.includes("exclui") || p.includes("apag")) {
+    return {
+      tipo_operacao: "DELETE",
+      tabelas_utilizadas: ["Cadastro de Vendas", "contas a receber", "Vendas Efetuadas"],
+      explicacao: "Procedimento seguro de cancelamento no Softshop Desktop (SQL Server). Primeiro valida se a venda existe, seu valor e se há parcelas já quitadas no contas a receber. Em seguida, executa transação defensiva (T-SQL) marcando a venda e parcelas em aberto como canceladas sem quebrar a integridade referencial.",
+      sql_validacao: `-- 1. Validação prévia da Venda no Softshop Desktop
+SELECT 
+    cv.[Código da Venda],
+    cv.[Data da Venda],
+    cv.[Situação],
+    cv.[Total da Venda],
+    ISNULL(cc.[Nome do Cliente], 'Consumidor') AS Cliente,
+    cr.[Valor] AS ParcelaValor,
+    cr.[Recebido] AS ParcelaRecebida
+FROM [Cadastro de Vendas] cv WITH (NOLOCK)
+LEFT JOIN [Cadastro de Clientes] cc WITH (NOLOCK) ON cv.[Nome do Cliente] = cc.[Código do Cliente]
+LEFT JOIN [contas a receber] cr WITH (NOLOCK) ON cv.[Código da Venda] = cr.[Venda]
+WHERE cv.[Código da Venda] = @VendaId;`,
+      sql_final: `-- 2. Cancelamento Seguro com Transação T-SQL no Softshop Desktop
+BEGIN TRANSACTION;
+
+-- Atualiza o cabeçalho da venda para cancelada
+UPDATE [Cadastro de Vendas]
+SET 
+    [Situação] = 'CANCELADA',
+    [Cancelada] = 1,
+    [Observações] = CONCAT([Observações], ' - Cancelada em ', CONVERT(VARCHAR(19), GETDATE(), 120))
+WHERE [Código da Venda] = @VendaId;
+
+-- Cancela as parcelas pendentes no contas a receber
+UPDATE [contas a receber]
+SET 
+    [Cancelada] = 1,
+    [Histórico] = CONCAT([Histórico], ' [CANCELADO]')
+WHERE [Venda] = @VendaId
+  AND ([Recebido] IS NULL OR [Recebido] = 0);
+
+COMMIT TRANSACTION;`,
+      usage: usage
+    };
+  }
+
+  if (p.includes("estoqu") || p.includes("mercador") || p.includes("produt") || p.includes("prec") || p.includes("preç")) {
+    return {
+      tipo_operacao: "SELECT",
+      tabelas_utilizadas: ["Cadastro de Mercadorias"],
+      explicacao: "Consulta de mercadorias do Softshop Desktop listando saldo de estoque, preço de venda e fabricante, filtrando mercadorias ativas ([Desativado] = 0).",
+      sql_validacao: "",
+      sql_final: `-- Mercadorias e Saldo de Estoque no Softshop Desktop
+SELECT TOP 50
+    cm.[Código da Mercadoria],
+    cm.[Mercadoria],
+    cm.[Fabricante],
+    cm.[Unidades em Estoque],
+    cm.[Preço de Venda],
+    cm.[Preço C] AS PrecoCusto,
+    cm.[Cód Barra],
+    cm.[Grupo]
+FROM [Cadastro de Mercadorias] cm WITH (NOLOCK)
+WHERE ISNULL(cm.[Desativado], 0) = 0
+ORDER BY cm.[Unidades em Estoque] ASC;`,
+      usage: usage
+    };
+  }
+
+  if (p.includes("receber") || p.includes("inadimpl") || p.includes("divida") || p.includes("aberto")) {
+    return {
+      tipo_operacao: "SELECT",
+      tabelas_utilizadas: ["contas a receber", "Cadastro de Clientes", "Cadastro de Vendas"],
+      explicacao: "Listagem de títulos a receber vencidos e não quitados no Softshop Desktop vinculando com os dados de contato do cliente.",
+      sql_validacao: "",
+      sql_final: `-- Contas a Receber Vencidas no Softshop Desktop
+SELECT TOP 50
+    cr.[Código] AS Titulo,
+    cr.[Venda],
+    cc.[Nome do Cliente],
+    cc.[Fone Resid] AS Telefone,
+    cr.[Valor],
+    cr.[Vencimento],
+    DATEDIFF(DAY, cr.[Vencimento], GETDATE()) AS DiasAtraso
+FROM [contas a receber] cr WITH (NOLOCK)
+INNER JOIN [Cadastro de Clientes] cc WITH (NOLOCK) ON cr.[Cliente] = cc.[Código do Cliente]
+WHERE (cr.[Recebido] IS NULL OR cr.[Recebido] = 0)
+  AND ISNULL(cr.[Cancelada], 0) = 0
+  AND cr.[Vencimento] < GETDATE()
+ORDER BY cr.[Vencimento] ASC;`,
+      usage: usage
+    };
+  }
+
+  return {
+    tipo_operacao: "SELECT",
+    tabelas_utilizadas: ["Cadastro de Vendas", "Cadastro de Clientes", "Vendas Efetuadas"],
+    explicacao: "Consulta das últimas vendas registradas no Softshop Desktop (SQL Server) com dados do cliente e status da venda utilizando WITH (NOLOCK).",
+    sql_validacao: "",
+    sql_final: `-- Últimas Vendas Registradas no Softshop Desktop
+SELECT TOP 20
+    cv.[Código da Venda],
+    cv.[Data da Venda],
+    ISNULL(cc.[Nome do Cliente], 'Consumidor') AS Cliente,
+    cv.[Total da Venda],
+    cv.[Desconto],
+    cv.[Total Liquido],
+    cv.[Situação],
+    cv.[Forma de Pagamento]
+FROM [Cadastro de Vendas] cv WITH (NOLOCK)
+LEFT JOIN [Cadastro de Clientes] cc WITH (NOLOCK) ON cv.[Nome do Cliente] = cc.[Código do Cliente]
+ORDER BY cv.[Código da Venda] DESC;`,
+    usage: usage
+  };
+}
+
 // 3. STRUCTURED OUTPUTS & MONITOR DE TOKENS: Chamada Gemini
 // ====================================================================
-function callGeminiStructured(message, apiKey) {
+function callGeminiStructured(message, apiKey, system = 'softcomshop') {
   return new Promise((resolve) => {
     try {
-      const relevantSchema = retrieveRelevantSchema(message);
+      const isSoftshop = (system === 'softshop');
+      const relevantSchema = isSoftshop ? retrieveSoftshopSchema(message) : retrieveRelevantSchema(message);
 
-      const systemPrompt = `Você é o Especialista Sênior em Banco de Dados do Softcomshop (MySQL 8.0).
+      const systemPrompt = isSoftshop 
+        ? `${SOFTSHOP_SYSTEM_PROMPT}\n\nSCHEMA DISPONÍVEL:\n${relevantSchema}`
+        : `Você é o Especialista Sênior em Banco de Dados do Softcomshop (MySQL 8.0).
 Sua missão é gerar consultas SQL extremamente precisas baseadas na estrutura real de 459 tabelas do ERP.
 
 REGRAS OBRIGATÓRIAS:
@@ -416,30 +620,27 @@ module.exports = async function handler(req, res) {
     const activeKey = body.apiKey || process.env.GEMINI_API_KEY;
     const activeSystem = body.system === "softshop" ? "softshop" : "softcomshop";
 
-    // Roteamento para o Módulo Softshop Desktop
-    if (activeSystem === "softshop") {
-      return res.status(200).json(sanitizeData({
-        tipo_operacao: "SELECT",
-        tabelas_utilizadas: ["softshop_desktop"],
-        explicacao: "Módulo Softshop Desktop selecionado. O sistema está pronto e aguardando você fornecer os dados de acesso ao banco desktop (SGBD como Firebird, MySQL, SQL Server, PostgreSQL, Host, Porta e Credenciais) ou os scripts DDL das tabelas. Assim que você me passar o acesso, mapearei 100% das tabelas, campos e relacionamentos para gerar queries nativas e precisas!",
-        sql_validacao: "",
-        sql_final: `-- Módulo Softshop (Desktop) aguardando acesso
--- Por favor, envie os dados de conexão ou o script DDL das tabelas para mapeamento completo de colunas e relacionamentos.`,
-        usage: {
-          prompt_tokens: 0,
-          completion_tokens: 0,
-          total_tokens: 0,
-          source: "softshop_desktop",
-          status: "waiting_schema"
-        }
-      }));
-    }
-
     let geminiQuotaExhausted = false;
 
-    // Se houver chave do Gemini, tenta executar via IA (Softcomshop)
+    // Se houver chave do Gemini, tenta executar via IA com o prompt do sistema selecionado
     if (activeKey) {
-      const geminiRes = await callGeminiStructured(message, activeKey);
+      const geminiRes = await callGeminiStructured(message, activeKey, activeSystem);
+      if (geminiRes) {
+        if (geminiRes._error) {
+          if (geminiRes.quota_exhausted) {
+            geminiQuotaExhausted = true;
+          }
+        } else if (geminiRes.sql_final || geminiRes.sql) {
+          return res.status(200).json(sanitizeData(geminiRes));
+        }
+      }
+    }
+
+    // Se o sistema ativo for o Softshop Desktop (SQL Server):
+    if (activeSystem === "softshop") {
+      const softshopFallback = generateSoftshopFallback(message, geminiQuotaExhausted);
+      return res.status(200).json(sanitizeData(softshopFallback));
+    }
       if (geminiRes) {
         if (geminiRes._error) {
           if (geminiRes.quota_exhausted) {
