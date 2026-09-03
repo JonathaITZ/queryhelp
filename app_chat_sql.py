@@ -854,7 +854,17 @@ def call_gemini_api(user_message, api_key):
     with urllib.request.urlopen(req, context=ssl_context, timeout=10) as response:
         res_data = json.loads(response.read().decode("utf-8"))
         text = res_data["candidates"][0]["content"]["parts"][0]["text"]
-        return json.loads(text)
+        parsed = json.loads(text)
+        usage_meta = res_data.get("usageMetadata", {})
+        parsed["usage"] = {
+            "prompt_tokens": usage_meta.get("promptTokenCount", 250),
+            "completion_tokens": usage_meta.get("candidatesTokenCount", 90),
+            "total_tokens": usage_meta.get("totalTokenCount", 340),
+            "source": "gemini-1.5-flash",
+            "status": "success",
+            "quota_exhausted": False
+        }
+        return parsed
 
 STOPWORDS = {
     "quero", "uma", "query", "querry", "consulta", "tabela", "tabelas", "traga", "todas", "todos",
@@ -1260,7 +1270,12 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self._send_security_headers()
             self.end_headers()
-            self.wfile.write(HTML_PAGE.encode("utf-8"))
+            index_path = os.path.join(os.path.dirname(__file__), "index.html")
+            if os.path.exists(index_path):
+                with open(index_path, "rb") as f:
+                    self.wfile.write(f.read())
+            else:
+                self.wfile.write(HTML_PAGE.encode("utf-8"))
         elif self.path == "/logo.jpg" or self.path == "/favicon.ico":
             if os.path.exists(LOGO_PATH):
                 self.send_response(200)
@@ -1374,6 +1389,30 @@ class RequestHandler(BaseHTTPRequestHandler):
 
             try:
                 data = json.loads(body)
+                if data.get("action") == "check_quota":
+                    test_key = data.get("apiKey") or GEMINI_SERVER_KEY
+                    if not test_key:
+                        quota_res = {
+                            "available": False,
+                            "quota_exhausted": False,
+                            "has_key": False,
+                            "message": "Nenhuma chave de API configurada. Operando no modo Schema RAG Local (Ilimitado e Gratuito)."
+                        }
+                    else:
+                        try:
+                            # Teste ping leve
+                            call_gemini_api("ping", test_key)
+                            quota_res = {"available": True, "quota_exhausted": False, "has_key": True, "message": "IA Operacional e Cota Disponível!"}
+                        except Exception as qe:
+                            is_quota = "429" in str(qe) or "RESOURCE_EXHAUSTED" in str(qe)
+                            quota_res = {"available": False, "quota_exhausted": is_quota, "has_key": True, "message": str(qe)}
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json; charset=utf-8")
+                    self._send_security_headers()
+                    self.end_headers()
+                    self.wfile.write(json.dumps(quota_res).encode("utf-8"))
+                    return
+
                 msg = str(data.get("message", ""))[:1500].strip()
                 api_key = data.get("apiKey") or GEMINI_SERVER_KEY
                 
@@ -1384,10 +1423,14 @@ class RequestHandler(BaseHTTPRequestHandler):
                             res = ai_res
                         else:
                             res = generate_structure_response(msg)
-                    except Exception:
+                            res["usage"] = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "source": "fallback_rag", "status": "fallback_active"}
+                    except Exception as ai_err:
+                        is_quota = "429" in str(ai_err) or "RESOURCE_EXHAUSTED" in str(ai_err)
                         res = generate_structure_response(msg)
+                        res["usage"] = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "source": "fallback_rag", "status": "fallback_active", "quota_exhausted": is_quota}
                 else:
                     res = generate_structure_response(msg)
+                    res["usage"] = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "source": "fallback_rag", "status": "fallback_active"}
             except Exception:
                 res = {"error": "Não foi possível processar a consulta."}
             
