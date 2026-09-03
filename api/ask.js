@@ -780,24 +780,7 @@ module.exports = async function handler(req, res) {
     // 5. MOTOR DETERMINÍSTICO DE FALLBACK AUDITADO (SCHEMA RAG)
     // ====================================================================
     const p = message.toLowerCase();
-    // LOTE E SERIAL NO SOFTSHOP DESKTOP
-    if (p.includes("lote") || p.includes("serial") || p.includes("serie") || p.includes("rastre")) {
-      return {
-        tipo_operacao: "INFO",
-        tabelas_utilizadas: [
-          "[Serial_Estoque]",
-          "[Serial_Ajustes]",
-          "[Serial_Balanco]",
-          "[Cadastro de Mercadorias]",
-          "[Vendas Efetuadas]",
-          "[Empresa]"
-        ],
-        explicacao: "No **Softshop Desktop (SQL Server)**, o controle de serial e lote é gerenciado por:\n\n• **`[Serial_Estoque]`**: Tabela principal de saldo e rastreio individual de cada Serial em estoque;\n• **`[Serial_Ajustes]`** e **`[Serial_Balanco]`**: Histórico de movimentações, ajustes e balanço de seriais;\n• **`[Vendas Efetuadas]`**: Registra o serial faturado nas colunas `[Serial]`, `[Serial_Fabricacao]`, `[Serial_Validade]`;\n• **`[Cadastro de Mercadorias]`**: Possui o campo `[SolicitarSerial]` (bit) que define se o produto exige serial na venda/entrada;\n• **`[Empresa]`**: Configurações globais `[AtivarLoteSerial]`, `[BaixarLote]` e `[BloquearEstoqueSerial]`.",
-        sql_validacao: null,
-        sql_final: null,
-        usage: fallbackUsage
-      };
-    }
+
 
 
     const isDelete = p.includes("delete") || p.includes("deletar") || p.includes("excluir") || p.includes("apagar") || p.includes("cancelar") || p.includes("remover");
