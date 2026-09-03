@@ -415,19 +415,82 @@
     </div>
 
     <!-- Modal de API Key -->
-    <div id="api-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 hidden z-50">
-        <div class="bg-cardBg border border-borderBase rounded-2xl p-5 max-w-sm w-full shadow-2xl">
-            <h3 class="text-sm font-semibold text-white mb-1">Chave da API Gemini</h3>
-            <p class="text-xs text-slate-400 mb-3">Insira sua chave gratuita do Google AI Studio para ativar o modelo generativo com cota dedicada.</p>
-            <input 
-                type="password" 
-                id="api-key-input" 
-                placeholder="Cole sua chave aqui..." 
-                class="w-full bg-bgApp border border-borderBase focus:border-amber-500 rounded-lg px-3 py-2 text-xs text-white mb-4 focus:outline-none font-mono"
-            />
-            <div class="flex justify-end gap-2">
-                <button onclick="closeApiKeyModal()" class="px-3 py-1.5 rounded-lg text-xs text-slate-400 hover:text-white">Cancelar</button>
-                <button onclick="saveApiKey()" class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-amber-500 hover:bg-amber-400 text-slate-950">Salvar</button>
+    <div id="api-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-cardBg border border-borderBase rounded-2xl p-5 sm:p-6 max-w-md w-full shadow-2xl relative custom-scroll max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+                        <i class="fa-solid fa-key text-xs"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-white tracking-tight">Gerenciador de Chaves Gemini</h3>
+                        <span class="text-[10px] text-slate-400">Failover Inteligente (Pagas ➔ Gratuitas)</span>
+                    </div>
+                </div>
+                <button onclick="closeApiKeyModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition">
+                    <i class="fa-solid fa-xmark text-xs"></i>
+                </button>
+            </div>
+
+            <!-- Explicação do Funcionamento -->
+            <div class="p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl mb-4 text-[11px] text-slate-300 leading-relaxed">
+                <div class="flex items-center gap-1.5 text-amber-400 font-semibold mb-1">
+                    <i class="fa-solid fa-bolt-lightning text-[10px]"></i>
+                    <span>Prioridade Automática:</span>
+                </div>
+                O sistema prioriza suas <strong>Chaves Pagas</strong>. Se a cota delas acabar (HTTP 429), o QueryHelp comuta <strong>automaticamente para as Chaves Gratuitas</strong> sem interromper o serviço!
+            </div>
+
+            <div class="space-y-3.5">
+                <!-- 1. Campo Chaves Pagas -->
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="text-[11px] font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                            <span>1. Chaves Pagas (Prioridade 1)</span>
+                        </label>
+                        <span class="text-[10px] text-slate-500">Paid Tier</span>
+                    </div>
+                    <textarea 
+                        id="api-paid-keys-input" 
+                        rows="2"
+                        placeholder="Cole sua(s) chave(s) pagas (separe por vírgula ou linha)..." 
+                        class="w-full bg-bgApp border border-borderBase focus:border-emerald-500/60 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none font-mono resize-none"
+                    ></textarea>
+                </div>
+
+                <!-- 2. Campo Chaves Gratuitas -->
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="text-[11px] font-semibold text-sky-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-sky-400"></span>
+                            <span>2. Chaves Gratuitas (Fallback de Contingência)</span>
+                        </label>
+                        <span class="text-[10px] text-slate-500">Free Tier</span>
+                    </div>
+                    <textarea 
+                        id="api-free-keys-input" 
+                        rows="2"
+                        placeholder="Cole sua(s) chave(s) gratuitas..." 
+                        class="w-full bg-bgApp border border-borderBase focus:border-sky-500/60 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none font-mono resize-none"
+                    ></textarea>
+                </div>
+
+                <!-- Status Atual do Tier -->
+                <div class="p-2.5 rounded-xl border border-borderBase/60 bg-bgApp/60 flex items-center justify-between text-[11px]">
+                    <span class="text-slate-400">Status do Pool:</span>
+                    <span id="tier-badge-status" class="font-semibold text-amber-400 font-mono text-[10.5px]">
+                        Nenhuma chave configurada
+                    </span>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 mt-4 pt-3 border-t border-borderBase/60">
+                <button onclick="closeApiKeyModal()" class="px-3.5 py-1.5 rounded-xl text-xs text-slate-400 hover:text-white transition">Cancelar</button>
+                <button onclick="saveApiKeysPool()" class="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 transition shadow-lg shadow-amber-500/10 flex items-center gap-1.5">
+                    <i class="fa-solid fa-floppy-disk text-[11px]"></i>
+                    <span>Salvar Configuração</span>
+                </button>
             </div>
         </div>
     </div>
@@ -759,25 +822,48 @@
             document.getElementById('api-modal').classList.add('hidden');
         }
 
-        function saveApiKey() {
-            currentApiKey = document.getElementById('api-key-input').value.trim();
-            if (currentApiKey) {
-                sessionStorage.setItem('GEMINI_SESSION_KEY', currentApiKey);
-            } else {
-                sessionStorage.removeItem('GEMINI_SESSION_KEY');
-            }
-            closeApiKeyModal();
-            updateBtnText();
-            testAiQuotaConnection();
+        let currentPaidKeys = localStorage.getItem('GEMINI_PAID_KEYS') || '';
+        let currentFreeKeys = localStorage.getItem('GEMINI_FREE_KEYS') || localStorage.getItem('GEMINI_SESSION_KEY') || '';
+
+        function openApiKeyModal() {
+            document.getElementById('api-paid-keys-input').value = currentPaidKeys;
+            document.getElementById('api-free-keys-input').value = currentFreeKeys;
+            updateTierBadgeUI();
+            document.getElementById('api-modal').classList.remove('hidden');
         }
 
-        function updateBtnText() {
+        function closeApiKeyModal() {
+            document.getElementById('api-modal').classList.add('hidden');
+        }
+
+        function updateTierBadgeUI() {
+            const badge = document.getElementById('tier-badge-status');
             const btnText = document.getElementById('btn-api-text');
-            if (btnText) {
-                btnText.innerText = currentApiKey ? 'Chave Ativa' : 'Chave';
+            if (currentPaidKeys.trim()) {
+                if (badge) badge.innerHTML = '<span class="text-emerald-400">💎 Prioridade Paga Ativa</span>';
+                if (btnText) btnText.innerHTML = '💎 Chave Paga';
+            } else if (currentFreeKeys.trim()) {
+                if (badge) badge.innerHTML = '<span class="text-sky-400">⚡ Gratuita Ativa</span>';
+                if (btnText) btnText.innerHTML = '⚡ Gratuita';
+            } else {
+                if (badge) badge.innerHTML = '<span class="text-slate-400">🛡️ Schema RAG Local</span>';
+                if (btnText) btnText.innerHTML = 'Chave';
             }
         }
-        updateBtnText();
+
+        function saveApiKeysPool() {
+            currentPaidKeys = document.getElementById('api-paid-keys-input').value.trim();
+            currentFreeKeys = document.getElementById('api-free-keys-input').value.trim();
+
+            localStorage.setItem('GEMINI_PAID_KEYS', currentPaidKeys);
+            localStorage.setItem('GEMINI_FREE_KEYS', currentFreeKeys);
+            sessionStorage.setItem('GEMINI_PAID_KEYS', currentPaidKeys);
+            sessionStorage.setItem('GEMINI_FREE_KEYS', currentFreeKeys);
+
+            closeApiKeyModal();
+            updateTierBadgeUI();
+            testAiQuotaConnection();
+        }
 
         function goHome(e) {
             if (e) e.preventDefault();
@@ -883,7 +969,12 @@
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${sessionToken}`
                     },
-                    body: JSON.stringify({ message: queryText, apiKey: currentApiKey, system: currentSystem })
+                    body: JSON.stringify({ 
+                        message: queryText, 
+                        paidKeys: currentPaidKeys,
+                        freeKeys: currentFreeKeys,
+                        system: currentSystem 
+                    })
                 });
 
                 if (response.status === 401) {
