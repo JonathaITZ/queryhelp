@@ -142,8 +142,22 @@
                 </div>
             </div>
 
+            <!-- SELETOR DE SISTEMA: SOFTCOMSHOP (WEB) vs SOFTSHOP (DESKTOP) -->
+            <div class="flex items-center bg-[#0d1017] p-1 rounded-xl border border-borderBase shadow-inner">
+                <button id="tab-softcomshop" onclick="switchSystem('softcomshop')" class="px-3 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                    <i class="fa-solid fa-cloud text-[11px]"></i>
+                    <span>Softcomshop</span>
+                    <span class="text-[9px] bg-amber-500/20 text-amber-200 px-1.5 py-0.2 rounded font-mono">Web</span>
+                </button>
+                <button id="tab-softshop" onclick="switchSystem('softshop')" class="px-3 py-1 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-desktop text-[11px]"></i>
+                    <span>Softshop</span>
+                    <span class="text-[9px] bg-cyan-950/50 text-cyan-400 border border-cyan-500/30 px-1.5 py-0.2 rounded font-mono">Desktop</span>
+                </button>
+            </div>
+
             <div class="flex items-center gap-2.5">
-                <span class="text-xs text-slate-400 hidden md:inline-block">Softcomshop • 459 tabelas</span>
+                <span id="system-badge-subtitle" class="text-xs text-slate-400 hidden lg:inline-block">Softcomshop • 459 tabelas</span>
 
                 <!-- BOTÃO DO MONITOR DE TOKENS -->
                 <button onclick="openTokenMonitorModal()" class="text-xs text-slate-300 hover:text-white px-3 py-1.5 rounded-lg bg-cardBg hover:bg-white/5 border border-borderBase transition flex items-center gap-2 group" title="Monitor de Tokens e Cota da IA">
@@ -395,6 +409,30 @@
     <script>
         let sessionToken = sessionStorage.getItem('AUTH_SESSION_TOKEN') || '';
         let currentApiKey = sessionStorage.getItem('GEMINI_SESSION_KEY') || '';
+        let currentSystem = sessionStorage.getItem('QH_ACTIVE_SYSTEM') || 'softcomshop';
+
+        function switchSystem(sys) {
+            currentSystem = sys;
+            sessionStorage.setItem('QH_ACTIVE_SYSTEM', sys);
+            
+            const tabSoftcom = document.getElementById('tab-softcomshop');
+            const tabSoft = document.getElementById('tab-softshop');
+            const input = document.getElementById('user-input');
+            const badge = document.getElementById('system-badge-subtitle');
+
+            if (sys === 'softshop') {
+                if (tabSoft) tabSoft.className = 'px-3 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 shadow-sm';
+                if (tabSoftcom) tabSoftcom.className = 'px-3 py-1 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 transition flex items-center gap-1.5 border border-transparent';
+                if (input) input.placeholder = 'Softshop Desktop: digite sua dúvida ou envie os dados de conexão/tabelas...';
+                if (badge) badge.innerHTML = '<span class="text-cyan-400 font-mono">Softshop Desktop</span> • Aguardando Conexão';
+            } else {
+                if (tabSoftcom) tabSoftcom.className = 'px-3 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-sm';
+                if (tabSoft) tabSoft.className = 'px-3 py-1 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 transition flex items-center gap-1.5 border border-transparent';
+                if (input) input.placeholder = 'Softcomshop: digite sua dúvida ou o que deseja consultar...';
+                if (badge) badge.innerHTML = 'Softcomshop • 459 tabelas (Web)';
+            }
+            clearChat();
+        }
 
         // ====================================================================
         // GESTOR DE TOKENS E CONSUMO DA IA (LOCALSTORAGE TRACKER)
@@ -636,6 +674,7 @@
                 appView.classList.remove('hidden');
                 appView.classList.add('flex');
                 renderTokenUI();
+                switchSystem(currentSystem);
             } else {
                 loginView.classList.remove('hidden');
                 appView.classList.add('hidden');
@@ -719,28 +758,67 @@
             box.innerHTML = '';
             const welcome = document.createElement('div');
             welcome.id = 'welcome-card';
-            welcome.className = 'text-center py-16 px-4';
-            welcome.innerHTML = `
-                <img src="logo.jpg" alt="Logo" class="w-16 h-16 rounded-2xl mx-auto mb-4 object-cover border border-white/10 shadow-lg" />
-                <h1 class="text-xl font-semibold text-white mb-2 tracking-tight">Bem-vindo, <span class="text-amber-400 font-mono">Especialista</span>!</h1>
-                <p class="text-xs text-slate-400 max-w-md mx-auto leading-relaxed mb-6">
-                    Estrutura oficial de <strong>459 tabelas e 6.600 campos</strong> conectada no Supabase. Pergunte sobre consultas, exclusões ou atualizações com validação prévia.
-                </p>
-                <div class="flex flex-wrap justify-center gap-2 max-w-lg mx-auto">
-                    <button onclick="sendQuickPrompt('Como deletar vendas com segurança?')" class="text-xs text-slate-300 hover:text-white bg-cardBg hover:bg-white/5 border border-borderBase px-3 py-1.5 rounded-lg transition">
-                        Deletar vendas (com validação)
-                    </button>
-                    <button onclick="sendQuickPrompt('Quais vendas estão em contingência e suas diferenças?')" class="text-xs text-slate-300 hover:text-white bg-cardBg hover:bg-white/5 border border-borderBase px-3 py-1.5 rounded-lg transition">
-                        Vendas em contingência
-                    </button>
-                    <button onclick="sendQuickPrompt('Como alterar o preço ou estoque de um produto?')" class="text-xs text-slate-300 hover:text-white bg-cardBg hover:bg-white/5 border border-borderBase px-3 py-1.5 rounded-lg transition">
-                        Alterar preço/estoque
-                    </button>
-                    <button onclick="sendQuickPrompt('Faturamento agrupado por forma de pagamento')" class="text-xs text-slate-300 hover:text-white bg-cardBg hover:bg-white/5 border border-borderBase px-3 py-1.5 rounded-lg transition">
-                        Faturamento por pagamento
-                    </button>
-                </div>
-            `;
+            welcome.className = 'text-center py-14 px-4';
+
+            if (currentSystem === 'softshop') {
+                welcome.innerHTML = `
+                    <div class="w-14 h-14 rounded-2xl mx-auto mb-4 bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shadow-lg shadow-cyan-500/5">
+                        <i class="fa-solid fa-desktop text-2xl"></i>
+                    </div>
+                    <div class="flex items-center justify-center gap-2 mb-2">
+                        <h1 class="text-lg font-bold text-white tracking-tight">Módulo <span class="text-cyan-400 font-mono">Softshop Desktop</span></h1>
+                        <span class="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-mono">DESKTOP</span>
+                    </div>
+                    <p class="text-xs text-slate-400 max-w-md mx-auto leading-relaxed mb-6">
+                        Ambiente preparado para a base do sistema Desktop. Assim que você me passar os dados de acesso ou o script de tabelas, mapearei 100% dos campos e relacionamentos.
+                    </p>
+
+                    <div class="bg-cyan-950/20 border border-cyan-500/30 rounded-xl p-4 max-w-lg mx-auto text-left mb-6">
+                        <div class="flex items-center gap-2 text-cyan-300 font-semibold text-xs mb-1">
+                            <i class="fa-solid fa-plug-circle-bolt"></i>
+                            <span>Aguardando Dados de Acesso ao Banco</span>
+                        </div>
+                        <p class="text-[11px] text-slate-300 leading-relaxed">
+                            Você pode me informar o SGBD (ex: Firebird, MySQL, SQL Server ou PostgreSQL), Host/Porta e credenciais, ou colar scripts DDL de tabelas aqui no chat.
+                        </p>
+                    </div>
+
+                    <div class="flex flex-wrap justify-center gap-2 max-w-lg mx-auto">
+                        <button onclick="sendQuickPrompt('Como configuro o acesso ao banco do Softshop Desktop?')" class="text-xs text-slate-300 hover:text-white bg-cardBg hover:bg-white/5 border border-borderBase px-3 py-1.5 rounded-lg transition">
+                            Como configurar o banco Desktop?
+                        </button>
+                        <button onclick="sendQuickPrompt('Qual o banco de dados do Softshop Desktop (Firebird, MySQL, etc)?')" class="text-xs text-slate-300 hover:text-white bg-cardBg hover:bg-white/5 border border-borderBase px-3 py-1.5 rounded-lg transition">
+                            Qual o tipo de banco (SGBD)?
+                        </button>
+                        <button onclick="sendQuickPrompt('Enviar estrutura DDL de tabelas do Softshop Desktop')" class="text-xs text-slate-300 hover:text-white bg-cardBg hover:bg-white/5 border border-borderBase px-3 py-1.5 rounded-lg transition">
+                            Enviar script de tabelas
+                        </button>
+                    </div>
+                `;
+            } else {
+                welcome.innerHTML = `
+                    <img src="logo.jpg" alt="Logo" class="w-16 h-16 rounded-2xl mx-auto mb-4 object-cover border border-white/10 shadow-lg" />
+                    <h1 class="text-xl font-semibold text-white mb-2 tracking-tight">Bem-vindo, <span class="text-amber-400 font-mono">Especialista</span>!</h1>
+                    <p class="text-xs text-slate-400 max-w-md mx-auto leading-relaxed mb-6">
+                        Estrutura oficial de <strong>459 tabelas e 6.600 campos</strong> conectada no Supabase. Pergunte sobre consultas, exclusões ou atualizações com validação prévia.
+                    </p>
+
+                    <div class="flex flex-wrap justify-center gap-2 max-w-lg mx-auto">
+                        <button onclick="sendQuickPrompt('Como deletar vendas com segurança?')" class="text-xs text-slate-300 hover:text-white bg-cardBg hover:bg-white/5 border border-borderBase px-3 py-1.5 rounded-lg transition">
+                            Deletar vendas (com validação)
+                        </button>
+                        <button onclick="sendQuickPrompt('Quais vendas estão em contingência e suas diferenças?')" class="text-xs text-slate-300 hover:text-white bg-cardBg hover:bg-white/5 border border-borderBase px-3 py-1.5 rounded-lg transition">
+                            Vendas em contingência
+                        </button>
+                        <button onclick="sendQuickPrompt('Como alterar o preço ou estoque de um produto?')" class="text-xs text-slate-300 hover:text-white bg-cardBg hover:bg-white/5 border border-borderBase px-3 py-1.5 rounded-lg transition">
+                            Alterar preço/estoque
+                        </button>
+                        <button onclick="sendQuickPrompt('Faturamento agrupado por forma de pagamento')" class="text-xs text-slate-300 hover:text-white bg-cardBg hover:bg-white/5 border border-borderBase px-3 py-1.5 rounded-lg transition">
+                            Faturamento por pagamento
+                        </button>
+                    </div>
+                `;
+            }
             box.appendChild(welcome);
         }
 
@@ -770,7 +848,7 @@
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${sessionToken}`
                     },
-                    body: JSON.stringify({ message: queryText, apiKey: currentApiKey })
+                    body: JSON.stringify({ message: queryText, apiKey: currentApiKey, system: currentSystem })
                 });
 
                 if (response.status === 401) {
