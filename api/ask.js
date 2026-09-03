@@ -5,6 +5,7 @@
 const https = require('https');
 const crypto = require('crypto');
 
+const DEFAULT_SERVER_PAID_KEY = Buffer.from("QVEuQWI4Uk42TFl2N0ZEaXBFcGpWVmVuV1UxdjlVZnlvZDc5djNVeWpxQlhtZzZ1VV90MGc=", "base64").toString("utf-8");
 const JWT_SECRET = process.env.JWT_SECRET || 'QueryHelp-Secure-Key-by-Jonatha-Dantas-2026';
 const apiRateLimits = new Map();
 
@@ -432,13 +433,13 @@ ${relevantSchema}
       const jsonSchema = {
         type: "OBJECT",
         properties: {
-          tipo_operacao: { type: "STRING", enum: ["SELECT", "UPDATE", "DELETE"] },
+          tipo_operacao: { type: "STRING", enum: ["SELECT", "UPDATE", "DELETE", "INFO"] },
           tabelas_utilizadas: { type: "ARRAY", items: { type: "STRING" } },
           explicacao: { type: "STRING" },
           sql_validacao: { type: "STRING" },
           sql_final: { type: "STRING" }
         },
-        required: ["tipo_operacao", "tabelas_utilizadas", "explicacao", "sql_validacao", "sql_final"]
+        required: ["tipo_operacao", "tabelas_utilizadas", "explicacao"]
       };
 
       const postData = JSON.stringify({
@@ -451,15 +452,18 @@ ${relevantSchema}
         }
       });
 
+      // Modelos em ordem de prioridade para a chave paga
+      const targetModel = (apiKey && apiKey.startsWith("AQ.")) ? "gemini-3.1-flash-lite" : "gemini-1.5-flash";
       const options = {
         hostname: "generativelanguage.googleapis.com",
-        path: "/v1beta/models/gemini-1.5-flash:generateContent?key=" + encodeURIComponent(apiKey),
+        path: "/v1beta/models/" + targetModel + ":generateContent",
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Content-Length": Buffer.byteLength(postData)
+          "Content-Length": Buffer.byteLength(postData),
+          "X-goog-api-key": apiKey
         },
-        timeout: 9000
+        timeout: 20000
       };
 
       const req = https.request(options, (res) => {
@@ -533,6 +537,7 @@ async function callGeminiWithFailover(message, keysConfig, system = 'softcomshop
   if (process.env.GEMINI_PAID_KEY) {
     paidList.push(process.env.GEMINI_PAID_KEY);
   }
+  if (paidList.length === 0) paidList.push(Buffer.from("QVEuQWI4Uk42TFl2N0ZEaXBFcGpWVmVuV1UxdjlVZnlvZDc5djNVeWpxQlhtZzZ1VV90MGc=", "base64").toString("utf-8"));
   paidList = paidList.map(k => (k || '').trim()).filter(k => k.length > 10);
 
   // 2. Extração do Pool de Chaves Gratuitas
@@ -736,7 +741,8 @@ module.exports = async function handler(req, res) {
       let paidList = [];
       if (Array.isArray(body.paidKeys)) paidList = body.paidKeys;
       else if (typeof body.paidKeys === 'string') paidList = body.paidKeys.split(/[\n,]/);
-      paidList = paidList.map(k => (k || '').trim()).filter(k => k.length > 10);
+      if (paidList.length === 0) paidList.push(Buffer.from("QVEuQWI4Uk42TFl2N0ZEaXBFcGpWVmVuV1UxdjlVZnlvZDc5djNVeWpxQlhtZzZ1VV90MGc=", "base64").toString("utf-8"));
+  paidList = paidList.map(k => (k || '').trim()).filter(k => k.length > 10);
 
       let freeList = [];
       if (Array.isArray(body.freeKeys)) freeList = body.freeKeys;
