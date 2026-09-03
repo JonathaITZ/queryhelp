@@ -4,47 +4,50 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QueryHelp (BETA) • by Dantas</title>
-    <link rel="icon" type="image/jpeg" href="logo.jpg">
+    
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <!-- Tailwind CSS -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS (CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome (Icons) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <script>
         tailwind.config = {
             darkMode: 'class',
             theme: {
                 extend: {
                     fontFamily: {
-                        sans: ['"Inter"', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
-                        mono: ['"JetBrains Mono"', 'monospace']
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
                     },
                     colors: {
-                        bgApp: '#0c0e14',
-                        cardBg: '#131620',
-                        borderBase: 'rgba(255, 255, 255, 0.07)',
-                        borderHighlight: 'rgba(234, 179, 8, 0.3)',
-                        goldAccent: '#eab308'
+                        bgApp: '#0b0d13',
+                        cardBg: '#121620',
+                        borderBase: '#1e2433',
                     }
                 }
             }
         }
     </script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         body {
-            background-color: #0c0e14;
+            background-color: #0b0d13;
             color: #e2e8f0;
         }
         .custom-scroll::-webkit-scrollbar {
-            width: 4px;
+            width: 5px;
+            height: 5px;
         }
         .custom-scroll::-webkit-scrollbar-track {
-            background: transparent;
+            background: rgba(18, 22, 32, 0.5);
         }
         .custom-scroll::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.1);
+            background: #1e2433;
             border-radius: 4px;
         }
         .custom-scroll::-webkit-scrollbar-thumb:hover {
@@ -128,8 +131,8 @@
 
     <!-- APLICAÇÃO PRINCIPAL (Exibida após Login) -->
     <div id="app-view" class="min-h-screen flex-col hidden">
-        <!-- Header Minimalista e Seguro -->
-        <header class="border-b border-borderBase px-6 py-3.5 bg-bgApp/90 sticky top-0 z-40 backdrop-blur-md flex items-center justify-between">
+        <!-- Header Minimalista com Monitor de Tokens -->
+        <header class="border-b border-borderBase px-6 py-3 bg-bgApp/90 sticky top-0 z-40 backdrop-blur-md flex items-center justify-between">
             <div class="flex items-center gap-3">
                 <img src="logo.jpg" alt="Logo" class="w-8 h-8 rounded-lg object-cover border border-white/10 shadow-sm" />
                 <div class="flex items-center gap-2">
@@ -139,18 +142,34 @@
                 </div>
             </div>
 
-            <div class="flex items-center gap-3">
-                <span class="text-xs text-slate-400 hidden sm:inline-block">Softcomshop • 459 tabelas</span>
-                <button onclick="openApiKeyModal()" class="text-xs text-slate-300 hover:text-white px-3 py-1.5 rounded-lg bg-cardBg hover:bg-white/5 border border-borderBase transition flex items-center gap-1.5">
-                    <i class="fa-solid fa-shield-halved text-emerald-400 text-[10px]"></i>
-                    <span id="btn-api-text">API Gemini</span>
+            <div class="flex items-center gap-2.5">
+                <span class="text-xs text-slate-400 hidden md:inline-block">Softcomshop • 459 tabelas</span>
+
+                <!-- BOTÃO DO MONITOR DE TOKENS -->
+                <button onclick="openTokenMonitorModal()" class="text-xs text-slate-300 hover:text-white px-3 py-1.5 rounded-lg bg-cardBg hover:bg-white/5 border border-borderBase transition flex items-center gap-2 group" title="Monitor de Tokens e Cota da IA">
+                    <i class="fa-solid fa-gauge-high text-amber-400 text-[11px] group-hover:rotate-12 transition-transform"></i>
+                    <span class="font-medium hidden sm:inline">Monitor de Tokens</span>
+                    <span id="header-token-badge" class="flex items-center gap-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded text-[10px] font-mono">
+                        <span id="header-token-dot" class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span id="header-token-count">0 tkn</span>
+                    </span>
                 </button>
-                <button onclick="clearChat()" title="Nova conversa" class="text-xs text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-white/5 transition">
+
+                <!-- BOTÃO API KEY -->
+                <button onclick="openApiKeyModal()" class="text-xs text-slate-300 hover:text-white px-2.5 py-1.5 rounded-lg bg-cardBg hover:bg-white/5 border border-borderBase transition flex items-center gap-1.5" title="Chave de API Gemini">
+                    <i class="fa-solid fa-key text-slate-400 text-[10px]"></i>
+                    <span id="btn-api-text" class="hidden sm:inline">Chave</span>
+                </button>
+
+                <!-- BOTÃO RESET CHAT -->
+                <button onclick="clearChat()" title="Nova conversa" class="text-xs text-slate-400 hover:text-white p-2 rounded-lg hover:bg-white/5 transition">
                     <i class="fa-solid fa-arrow-rotate-right text-[11px]"></i>
                 </button>
+
+                <!-- BOTÃO SAIR -->
                 <button onclick="handleLogout()" title="Sair do sistema" class="text-xs text-red-400 hover:text-red-300 px-2.5 py-1.5 rounded-lg bg-red-950/20 hover:bg-red-950/40 border border-red-500/20 transition flex items-center gap-1.5">
                     <i class="fa-solid fa-arrow-right-from-bracket text-[10px]"></i>
-                    <span>Sair</span>
+                    <span class="hidden sm:inline">Sair</span>
                 </button>
             </div>
         </header>
@@ -209,11 +228,157 @@
         </main>
     </div>
 
+    <!-- MODAL MONITOR DE TOKENS & COTA DA IA -->
+    <div id="token-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-cardBg border border-borderBase rounded-2xl max-w-xl w-full p-6 shadow-2xl relative custom-scroll max-h-[90vh] overflow-y-auto">
+            <!-- Glow Decorativo -->
+            <div class="absolute -top-10 -right-10 w-36 h-36 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <!-- Header do Modal -->
+            <div class="flex items-center justify-between border-b border-borderBase/80 pb-4 mb-5">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+                        <i class="fa-solid fa-gauge-high text-base"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-sm font-bold text-white tracking-tight flex items-center gap-2">
+                            Monitor de IA & Consumo de Tokens
+                            <span class="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded font-mono">BETA</span>
+                        </h2>
+                        <p class="text-[11px] text-slate-400">Controle de consumo, limites e disponibilidade do modelo em produção</p>
+                    </div>
+                </div>
+                <button onclick="closeTokenMonitorModal()" class="text-slate-400 hover:text-white p-1 rounded-lg transition">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
+            </div>
+
+            <!-- Card de Status em Destaque (Ainda dá pra usar?) -->
+            <div id="token-status-banner" class="bg-emerald-950/20 border border-emerald-500/30 rounded-xl p-4 mb-5 flex items-start gap-3 transition">
+                <div id="token-status-icon" class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <i class="fa-solid fa-circle-check text-sm"></i>
+                </div>
+                <div class="flex-1">
+                    <div class="flex items-center justify-between">
+                        <h3 id="token-status-title" class="text-xs font-semibold text-emerald-300">IA Totalmente Disponível e Pronta</h3>
+                        <span id="token-status-pill" class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">ONLINE</span>
+                    </div>
+                    <p id="token-status-desc" class="text-[11px] text-slate-300 mt-1 leading-relaxed">
+                        A IA está respondendo normalmente dentro do limite de cota. Caso os tokens esgotem, o sistema entra automaticamente no motor Schema RAG Local (100% gratuito e ilimitado).
+                    </p>
+                </div>
+            </div>
+
+            <!-- Grid de Métricas Principais (3 Cards) -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+                <!-- Card 1: Total de Tokens -->
+                <div class="bg-bgApp border border-borderBase rounded-xl p-3.5 flex flex-col justify-between">
+                    <div>
+                        <span class="text-[10px] font-medium text-slate-400 uppercase tracking-wider block mb-1">Tokens Totais</span>
+                        <div class="flex items-baseline gap-1.5">
+                            <span id="stat-total-tokens" class="text-lg font-bold font-mono text-white">0</span>
+                            <span class="text-[10px] text-slate-500 font-mono">/ 1M</span>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                            <div id="stat-token-progress" class="bg-amber-400 h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                        </div>
+                        <span id="stat-token-pct" class="text-[9px] text-slate-400 font-mono mt-1 block text-right">0.0% da cota diária</span>
+                    </div>
+                </div>
+
+                <!-- Card 2: Entrada vs Saída -->
+                <div class="bg-bgApp border border-borderBase rounded-xl p-3.5 flex flex-col justify-between">
+                    <div>
+                        <span class="text-[10px] font-medium text-slate-400 uppercase tracking-wider block mb-1">Divisão de Tokens</span>
+                        <div class="space-y-1 mt-1 text-[11px] font-mono">
+                            <div class="flex justify-between text-slate-300">
+                                <span class="text-slate-500">Prompt:</span>
+                                <span id="stat-prompt-tokens">0</span>
+                            </div>
+                            <div class="flex justify-between text-slate-300">
+                                <span class="text-slate-500">Resposta:</span>
+                                <span id="stat-completion-tokens">0</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-2 text-[10px] text-slate-500">
+                        Média: <span id="stat-avg-tokens" class="text-slate-300 font-mono">0</span> tkn/query
+                    </div>
+                </div>
+
+                <!-- Card 3: Consultas Processadas -->
+                <div class="bg-bgApp border border-borderBase rounded-xl p-3.5 flex flex-col justify-between">
+                    <div>
+                        <span class="text-[10px] font-medium text-slate-400 uppercase tracking-wider block mb-1">Consultas na Sessão</span>
+                        <div class="text-lg font-bold font-mono text-white" id="stat-total-queries">0</div>
+                    </div>
+                    <div class="space-y-1 mt-2 text-[10px] font-mono">
+                        <div class="flex justify-between text-slate-300">
+                            <span class="text-emerald-400">Via IA Gemini:</span>
+                            <span id="stat-ai-queries">0</span>
+                        </div>
+                        <div class="flex justify-between text-slate-300">
+                            <span class="text-amber-400">Via Schema RAG:</span>
+                            <span id="stat-rag-queries">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabela: Histórico Recente de Consumo -->
+            <div class="mb-5">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-[11px] font-semibold text-slate-300 uppercase tracking-wider">Histórico Recente de Consumo</span>
+                    <span class="text-[10px] text-slate-500">Últimas 5 requisições</span>
+                </div>
+                <div class="border border-borderBase rounded-xl overflow-hidden bg-bgApp/50">
+                    <table class="w-full text-left text-[11px]">
+                        <thead class="bg-cardBg border-b border-borderBase text-[10px] font-medium text-slate-400 uppercase">
+                            <tr>
+                                <th class="py-2 px-3">Horário</th>
+                                <th class="py-2 px-3">Solicitação</th>
+                                <th class="py-2 px-3">Origem</th>
+                                <th class="py-2 px-3 text-right">Tokens</th>
+                            </tr>
+                        </thead>
+                        <tbody id="token-history-body" class="divide-y divide-borderBase/40 text-slate-300 font-mono">
+                            <tr>
+                                <td colspan="4" class="py-4 text-center text-slate-500 text-xs font-sans">
+                                    Nenhuma consulta realizada nesta sessão ainda.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Ações e Botões de Controle -->
+            <div class="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-borderBase/80">
+                <div class="flex gap-2">
+                    <button onclick="testAiQuotaConnection()" id="btn-test-quota" class="text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-bolt text-[10px]"></i>
+                        <span>Verificar Cota Agora</span>
+                    </button>
+                    <button onclick="resetTokenSession()" class="text-xs text-slate-400 hover:text-white hover:bg-white/5 border border-borderBase px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-rotate-left text-[10px]"></i>
+                        <span>Zerar Contador</span>
+                    </button>
+                </div>
+                <button onclick="closeTokenMonitorModal(); openApiKeyModal();" class="text-xs bg-cardBg hover:bg-white/5 text-slate-300 hover:text-white border border-borderBase px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-key text-[10px] text-amber-400"></i>
+                    <span>Configurar Chave Própria</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal de API Key -->
     <div id="api-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 hidden z-50">
         <div class="bg-cardBg border border-borderBase rounded-2xl p-5 max-w-sm w-full shadow-2xl">
             <h3 class="text-sm font-semibold text-white mb-1">Chave da API Gemini</h3>
-            <p class="text-xs text-slate-400 mb-3">Insira sua chave gratuita do Google AI Studio para ativar o modelo generativo.</p>
+            <p class="text-xs text-slate-400 mb-3">Insira sua chave gratuita do Google AI Studio para ativar o modelo generativo com cota dedicada.</p>
             <input 
                 type="password" 
                 id="api-key-input" 
@@ -231,6 +396,238 @@
         let sessionToken = sessionStorage.getItem('AUTH_SESSION_TOKEN') || '';
         let currentApiKey = sessionStorage.getItem('GEMINI_SESSION_KEY') || '';
 
+        // ====================================================================
+        // GESTOR DE TOKENS E CONSUMO DA IA (LOCALSTORAGE TRACKER)
+        // ====================================================================
+        const TOKEN_DAILY_LIMIT = 1000000; // Limite padrão diário Gemini Free Tier (1M tokens)
+
+        function getStoredTokens() {
+            return {
+                total: parseInt(localStorage.getItem('qh_token_total') || '0', 10),
+                prompt: parseInt(localStorage.getItem('qh_token_prompt') || '0', 10),
+                completion: parseInt(localStorage.getItem('qh_token_completion') || '0', 10),
+                queries: parseInt(localStorage.getItem('qh_queries_total') || '0', 10),
+                aiQueries: parseInt(localStorage.getItem('qh_queries_ai') || '0', 10),
+                ragQueries: parseInt(localStorage.getItem('qh_queries_rag') || '0', 10),
+                history: JSON.parse(localStorage.getItem('qh_token_history') || '[]'),
+                quotaExhausted: localStorage.getItem('qh_quota_exhausted') === 'true'
+            };
+        }
+
+        function recordTokenUsage(usage, queryText) {
+            const data = getStoredTokens();
+            const p = usage.prompt_tokens || 0;
+            const c = usage.completion_tokens || 0;
+            const t = usage.total_tokens || (p + c);
+            const isAi = usage.source && usage.source.includes('gemini');
+
+            data.total += t;
+            data.prompt += p;
+            data.completion += c;
+            data.queries += 1;
+            if (isAi) {
+                data.aiQueries += 1;
+            } else {
+                data.ragQueries += 1;
+            }
+
+            if (usage.quota_exhausted) {
+                data.quotaExhausted = true;
+            }
+
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+            const historyItem = {
+                time: timeStr,
+                query: (queryText || 'Consulta SQL').slice(0, 32) + (queryText && queryText.length > 32 ? '...' : ''),
+                source: isAi ? 'Gemini 1.5' : 'Schema RAG',
+                tokens: t,
+                isAi: isAi
+            };
+
+            data.history.unshift(historyItem);
+            if (data.history.length > 8) data.history.pop();
+
+            localStorage.setItem('qh_token_total', data.total);
+            localStorage.setItem('qh_token_prompt', data.prompt);
+            localStorage.setItem('qh_token_completion', data.completion);
+            localStorage.setItem('qh_queries_total', data.queries);
+            localStorage.setItem('qh_queries_ai', data.aiQueries);
+            localStorage.setItem('qh_queries_rag', data.ragQueries);
+            localStorage.setItem('qh_token_history', JSON.stringify(data.history));
+            localStorage.setItem('qh_quota_exhausted', data.quotaExhausted);
+
+            renderTokenUI();
+        }
+
+        function formatTokens(num) {
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
+            return num.toLocaleString('pt-BR');
+        }
+
+        function renderTokenUI() {
+            const data = getStoredTokens();
+
+            // 1. Atualizar Badge no Header Superior
+            const headerCount = document.getElementById('header-token-count');
+            const headerDot = document.getElementById('header-token-dot');
+            if (headerCount) headerCount.innerText = formatTokens(data.total) + ' tkn';
+
+            if (headerDot) {
+                if (data.quotaExhausted) {
+                    headerDot.className = 'w-1.5 h-1.5 rounded-full bg-red-400';
+                } else if (data.ragQueries > 0 && data.aiQueries === 0) {
+                    headerDot.className = 'w-1.5 h-1.5 rounded-full bg-amber-400';
+                } else {
+                    headerDot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse';
+                }
+            }
+
+            // 2. Atualizar Cards de Métricas do Modal
+            const elTotal = document.getElementById('stat-total-tokens');
+            const elPrompt = document.getElementById('stat-prompt-tokens');
+            const elComp = document.getElementById('stat-completion-tokens');
+            const elQueries = document.getElementById('stat-total-queries');
+            const elAiQueries = document.getElementById('stat-ai-queries');
+            const elRagQueries = document.getElementById('stat-rag-queries');
+            const elProgress = document.getElementById('stat-token-progress');
+            const elPct = document.getElementById('stat-token-pct');
+            const elAvg = document.getElementById('stat-avg-tokens');
+
+            if (elTotal) elTotal.innerText = data.total.toLocaleString('pt-BR');
+            if (elPrompt) elPrompt.innerText = data.prompt.toLocaleString('pt-BR');
+            if (elComp) elComp.innerText = data.completion.toLocaleString('pt-BR');
+            if (elQueries) elQueries.innerText = data.queries;
+            if (elAiQueries) elAiQueries.innerText = data.aiQueries;
+            if (elRagQueries) elRagQueries.innerText = data.ragQueries;
+
+            const pct = Math.min(100, ((data.total / TOKEN_DAILY_LIMIT) * 100)).toFixed(2);
+            if (elProgress) elProgress.style.width = pct + '%';
+            if (elPct) elPct.innerText = pct + '% da cota estimada';
+
+            const avg = data.queries > 0 ? Math.round(data.total / data.queries) : 0;
+            if (elAvg) elAvg.innerText = avg.toLocaleString('pt-BR');
+
+            // 3. Atualizar Banner de Status (Ainda dá pra usar?)
+            const banner = document.getElementById('token-status-banner');
+            const iconBox = document.getElementById('token-status-icon');
+            const title = document.getElementById('token-status-title');
+            const pill = document.getElementById('token-status-pill');
+            const desc = document.getElementById('token-status-desc');
+
+            if (banner && title && pill && desc) {
+                if (data.quotaExhausted) {
+                    banner.className = 'bg-red-950/30 border border-red-500/40 rounded-xl p-4 mb-5 flex items-start gap-3 transition';
+                    iconBox.className = 'w-8 h-8 rounded-lg bg-red-500/20 text-red-400 flex items-center justify-center shrink-0 mt-0.5';
+                    iconBox.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-sm"></i>';
+                    title.className = 'text-xs font-semibold text-red-300';
+                    title.innerText = 'Cota do Gemini Atingida — Modo RAG Ativo';
+                    pill.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full bg-red-500/20 text-red-300 border border-red-500/30';
+                    pill.innerText = 'COTA ESGOTADA';
+                    desc.innerText = 'A cota diária do modelo generativo foi atingida. O sistema alternou automaticamente para o motor Schema RAG Local determinístico: você pode continuar gerando queries de auditoria sem interrupção!';
+                } else {
+                    banner.className = 'bg-emerald-950/20 border border-emerald-500/30 rounded-xl p-4 mb-5 flex items-start gap-3 transition';
+                    iconBox.className = 'w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5';
+                    iconBox.innerHTML = '<i class="fa-solid fa-circle-check text-sm"></i>';
+                    title.className = 'text-xs font-semibold text-emerald-300';
+                    title.innerText = 'IA Totalmente Disponível e Pronta';
+                    pill.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+                    pill.innerText = 'ONLINE';
+                    desc.innerText = 'A cota de tokens está com ampla margem disponível para novas consultas SQL. O modelo Google Gemini 1.5 Flash está pronto para responder.';
+                }
+            }
+
+            // 4. Renderizar Tabela de Histórico
+            const historyBody = document.getElementById('token-history-body');
+            if (historyBody) {
+                if (data.history.length === 0) {
+                    historyBody.innerHTML = `
+                        <tr>
+                            <td colspan="4" class="py-4 text-center text-slate-500 text-xs font-sans">
+                                Nenhuma consulta realizada nesta sessão ainda.
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    historyBody.innerHTML = data.history.map(item => `
+                        <tr class="hover:bg-white/[0.02] transition">
+                            <td class="py-2 px-3 text-slate-400">${escapeHtml(item.time)}</td>
+                            <td class="py-2 px-3 text-white font-sans truncate max-w-[180px]">${escapeHtml(item.query)}</td>
+                            <td class="py-2 px-3">
+                                <span class="px-1.5 py-0.5 rounded text-[10px] ${item.isAi ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}">
+                                    ${escapeHtml(item.source)}
+                                </span>
+                            </td>
+                            <td class="py-2 px-3 text-right text-slate-200 font-bold">${item.tokens > 0 ? item.tokens : '0'}</td>
+                        </tr>
+                    `).join('');
+                }
+            }
+        }
+
+        function openTokenMonitorModal() {
+            renderTokenUI();
+            document.getElementById('token-modal').classList.remove('hidden');
+        }
+
+        function closeTokenMonitorModal() {
+            document.getElementById('token-modal').classList.add('hidden');
+        }
+
+        function resetTokenSession() {
+            if (confirm('Deseja zerar as métricas de consumo de tokens da sessão atual?')) {
+                localStorage.removeItem('qh_token_total');
+                localStorage.removeItem('qh_token_prompt');
+                localStorage.removeItem('qh_token_completion');
+                localStorage.removeItem('qh_queries_total');
+                localStorage.removeItem('qh_queries_ai');
+                localStorage.removeItem('qh_queries_rag');
+                localStorage.removeItem('qh_token_history');
+                localStorage.removeItem('qh_quota_exhausted');
+                renderTokenUI();
+            }
+        }
+
+        async function testAiQuotaConnection() {
+            const btn = document.getElementById('btn-test-quota');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch animate-spin text-[10px]"></i> Verificando cota...';
+
+            try {
+                const res = await fetch('/api/ask', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${sessionToken}`
+                    },
+                    body: JSON.stringify({ action: 'check_quota', apiKey: currentApiKey })
+                });
+                const data = await res.json();
+                
+                if (data.available) {
+                    localStorage.setItem('qh_quota_exhausted', 'false');
+                    alert('✅ Conexão Bem-Sucedida!\n\nA IA está 100% online e a cota do Gemini está disponível para novas consultas.');
+                } else if (data.quota_exhausted) {
+                    localStorage.setItem('qh_quota_exhausted', 'true');
+                    alert('⚠️ Cota Esgotada!\n\nA cota do Gemini foi atingida. O sistema já ativou o modo de contingência Schema RAG para que você nunca fique sem respostas.');
+                } else {
+                    alert('ℹ️ Informação:\n\n' + (data.message || 'Status verificado.'));
+                }
+            } catch (err) {
+                alert('Erro ao testar conectividade: ' + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+                renderTokenUI();
+            }
+        }
+
+        // ====================================================================
+        // AUTENTICAÇÃO E SESSÃO
+        // ====================================================================
         function checkAuth() {
             const loginView = document.getElementById('login-view');
             const appView = document.getElementById('app-view');
@@ -238,6 +635,7 @@
                 loginView.classList.add('hidden');
                 appView.classList.remove('hidden');
                 appView.classList.add('flex');
+                renderTokenUI();
             } else {
                 loginView.classList.remove('hidden');
                 appView.classList.add('hidden');
@@ -305,12 +703,13 @@
             }
             closeApiKeyModal();
             updateBtnText();
+            testAiQuotaConnection();
         }
 
         function updateBtnText() {
-            const btn = document.getElementById('btn-api-text');
-            if (btn) {
-                btn.innerText = currentApiKey ? 'Gemini Conectado' : 'API Gemini';
+            const btnText = document.getElementById('btn-api-text');
+            if (btnText) {
+                btnText.innerText = currentApiKey ? 'Chave Ativa' : 'Chave';
             }
         }
         updateBtnText();
@@ -359,8 +758,8 @@
             const welcomeCard = document.getElementById('welcome-card');
             if (welcomeCard) welcomeCard.remove();
 
-            input.value = '';
             appendUserMessage(queryText);
+            input.value = '';
 
             const loadingId = appendLoadingMessage();
 
@@ -391,6 +790,11 @@
                 const data = await response.json();
                 removeLoadingMessage(loadingId);
                 appendBotMessage(data);
+
+                // Registra consumo no Monitor de Tokens
+                if (data && data.usage) {
+                    recordTokenUsage(data.usage, queryText);
+                }
             } catch (err) {
                 removeLoadingMessage(loadingId);
                 appendErrorMessage('Não foi possível gerar a resposta: ' + err.message);
@@ -411,16 +815,18 @@
         }
 
         function appendLoadingMessage() {
-            const id = 'loading-' + Date.now();
             const box = document.getElementById('chat-box');
+            const id = 'loading-' + Date.now();
             const div = document.createElement('div');
             div.id = id;
-            div.className = 'flex gap-3 items-start';
+            div.className = 'flex gap-3 items-center text-xs text-slate-400';
             div.innerHTML = `
-                <img src="logo.jpg" alt="Logo" class="w-6 h-6 rounded-md object-cover border border-white/10 shrink-0 mt-1 animate-pulse" />
-                <div class="text-xs text-slate-400 py-1 flex items-center gap-2">
-                    <i class="fa-solid fa-circle-notch animate-spin text-amber-400"></i>
-                    <span>Estruturando e validando consulta no schema...</span>
+                <img src="logo.jpg" alt="Logo" class="w-6 h-6 rounded-md object-cover border border-white/10 shrink-0" />
+                <div class="flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse delay-75"></span>
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse delay-150"></span>
+                    <span class="text-[11px] text-slate-400 font-medium ml-1">Analisando 459 tabelas e gerando SQL...</span>
                 </div>
             `;
             box.appendChild(div);
@@ -433,16 +839,15 @@
             if (el) el.remove();
         }
 
-        function appendErrorMessage(text) {
+        function appendErrorMessage(msg) {
             const box = document.getElementById('chat-box');
             const div = document.createElement('div');
-            div.className = 'flex gap-3 items-start';
+            div.className = 'flex gap-3 items-start text-xs text-red-400 bg-red-950/20 border border-red-500/20 rounded-xl p-3';
             div.innerHTML = `
-                <div class="w-6 h-6 rounded-md bg-red-500/20 text-red-400 flex items-center justify-center text-xs shrink-0 mt-1">
-                    <i class="fa-solid fa-triangle-exclamation"></i>
-                </div>
-                <div class="text-xs text-red-300 py-1 bg-red-950/30 border border-red-500/20 rounded-xl px-3.5 py-2">
-                    ${escapeHtml(text)}
+                <i class="fa-solid fa-circle-exclamation text-sm text-red-400 shrink-0 mt-0.5"></i>
+                <div class="space-y-1">
+                    <div class="font-medium text-red-300">Falha na consulta</div>
+                    <div class="text-[11px] text-red-400/90 leading-relaxed">${escapeHtml(msg)}</div>
                 </div>
             `;
             box.appendChild(div);
@@ -456,6 +861,7 @@
 
             const isModification = (data.tipo_operacao === 'UPDATE' || data.tipo_operacao === 'DELETE' || !!data.sql_validacao);
             const tables = data.tabelas_utilizadas || [];
+            const usage = data.usage || null;
 
             let contentHtml = `
                 <div class="flex-1 space-y-3">
@@ -522,16 +928,32 @@
                 `;
             }
 
+            // Metadados de Tabelas e Custo de Tokens no Card
+            contentHtml += `<div class="flex flex-wrap items-center justify-between text-[11px] text-slate-500 pt-0.5 gap-2">`;
             if (tables.length > 0) {
                 contentHtml += `
-                    <div class="text-[11px] text-slate-500 flex items-center gap-2 pt-0.5">
+                    <div class="flex items-center gap-2">
                         <span>Tabelas:</span>
                         <span class="text-slate-400 font-mono">${escapeHtml(tables.join(', '))}</span>
                     </div>
                 `;
+            } else {
+                contentHtml += `<div></div>`;
             }
 
-            contentHtml += `</div>`;
+            if (usage) {
+                const isAi = usage.source && usage.source.includes('gemini');
+                contentHtml += `
+                    <div class="flex items-center gap-1.5 font-mono text-[10px] px-2 py-0.5 rounded bg-white/[0.03] border border-borderBase/60">
+                        <i class="${isAi ? 'fa-solid fa-microchip text-amber-400' : 'fa-solid fa-bolt text-emerald-400'} text-[9px]"></i>
+                        <span class="text-slate-400">${usage.total_tokens > 0 ? usage.total_tokens + ' tokens' : '0 tokens'}</span>
+                        <span class="text-slate-600">•</span>
+                        <span class="${isAi ? 'text-amber-300/80' : 'text-emerald-400/80'}">${isAi ? 'Gemini 1.5' : 'Schema RAG'}</span>
+                    </div>
+                `;
+            }
+
+            contentHtml += `</div></div>`;
 
             div.innerHTML = `
                 <img src="logo.jpg" alt="Logo" class="w-6 h-6 rounded-md object-cover border border-white/10 shrink-0 mt-0.5" />
