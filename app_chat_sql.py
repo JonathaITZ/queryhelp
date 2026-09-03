@@ -145,6 +145,60 @@ def load_schema_from_supabase():
 
 SCHEMA_TABLES_MAP = load_schema_from_supabase()
 
+
+def save_feedback_record(feedback_data):
+    """Grava o feedback no SQL Server [QueryHelp_Feedbacks] e no JSON data/feedbacks.json"""
+    import os, json, subprocess
+    
+    # 1. Gravar em data/feedbacks.json
+    try:
+        data_dir = os.path.join(os.path.dirname(__file__), "data")
+        os.makedirs(data_dir, exist_ok=True)
+        fb_path = os.path.join(data_dir, "feedbacks.json")
+        cur_list = []
+        if os.path.exists(fb_path):
+            try:
+                with open(fb_path, "r", encoding="utf-8") as fh:
+                    cur_list = json.load(fh)
+            except Exception:
+                pass
+        cur_list.insert(0, feedback_data)
+        with open(fb_path, "w", encoding="utf-8") as fh:
+            json.dump(cur_list, fh, indent=2, ensure_ascii=False)
+    except Exception as e:
+        print("[FEEDBACK] Erro ao salvar no JSON local:", e)
+
+    # 2. Gravar no SQL Server via ADO.NET / PowerShell
+    try:
+        ps_code = f"""
+$connStr = "Server=127.0.0.1,5433;Database=BaseLavanderiaPandaNovo;User Id=sa;Password=qaz@123;TrustServerCertificate=True;Connect Timeout=4;"
+$conn = New-Object System.Data.SqlClient.SqlConnection($connStr)
+try {{
+    $conn.Open()
+    $cmd = $conn.CreateCommand()
+    $cmd.CommandText = "INSERT INTO [QueryHelp_Feedbacks] ([Sistema], [Pergunta], [SQL_Gerado], [Tipo_Erro], [Observacao_Usuario], [Status]) VALUES (@sys, @p, @sql, @tipo, @obs, 'PENDENTE')"
+    $cmd.Parameters.AddWithValue("@sys", "{feedback_data.get('system', 'softcomshop')}") | Out-Null
+    $cmd.Parameters.AddWithValue("@p", @'
+{feedback_data.get('user_prompt', '')}
+'@) | Out-Null
+    $cmd.Parameters.AddWithValue("@sql", @'
+{feedback_data.get('generated_sql', '')}
+'@) | Out-Null
+    $cmd.Parameters.AddWithValue("@tipo", "{feedback_data.get('error_type', 'Incorreto')}") | Out-Null
+    $cmd.Parameters.AddWithValue("@obs", @'
+{feedback_data.get('feedback_notes', '')}
+'@) | Out-Null
+    $cmd.ExecuteNonQuery() | Out-Null
+    $conn.Close()
+}} catch {{
+    # Falha silenciosa se SQL Server local offline
+}}
+"""
+        subprocess.run(["powershell", "-Command", ps_code], capture_output=True, timeout=5)
+        print("[FEEDBACK] Feedback gravado com sucesso no SQL Server [QueryHelp_Feedbacks]!")
+    except Exception as e:
+        print("[FEEDBACK] Aviso ao gravar no SQL Server:", e)
+
 def persist_message_server_side(user_prompt, bot_data):
     """Grava o histórico no Supabase pelo Backend."""
     import ssl
