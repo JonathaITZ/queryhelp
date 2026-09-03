@@ -885,7 +885,8 @@ def call_gemini_api(user_message, api_key):
     """Requisição server-to-server segura para a API do Gemini."""
     import ssl
     ssl_context = ssl._create_unverified_context()
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+    model_target = "gemini-3.1-flash-lite" if (api_key and api_key.startswith("AQ.")) else "gemini-1.5-flash"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_target}:generateContent"
     payload = {
         "system_instruction": {
             "parts": [{"text": SYSTEM_PROMPT}]
@@ -903,7 +904,7 @@ def call_gemini_api(user_message, api_key):
     req = urllib.request.Request(
         url,
         data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json"}
+        headers={"Content-Type": "application/json", "X-goog-api-key": api_key}
     )
     with urllib.request.urlopen(req, context=ssl_context, timeout=10) as response:
         res_data = json.loads(response.read().decode("utf-8"))
