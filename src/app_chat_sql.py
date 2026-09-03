@@ -1241,6 +1241,56 @@ LIMIT 10;"""
         "explicacao": "Consulta base com as últimas vendas registradas na base aplicando os filtros padrão de empresa e exclusão lógica."
     }
 
+
+def call_gemini_with_failover(message, keys_config, system="softcomshop"):
+    paid_raw = keys_config.get("paidKeys") or []
+    if isinstance(paid_raw, str):
+        paid_raw = paid_raw.replace("\n", ",").split(",")
+    paid_pool = [k.strip() for k in paid_raw if len(k.strip()) > 10]
+    
+    free_raw = keys_config.get("freeKeys") or []
+    if isinstance(free_raw, str):
+        free_raw = free_raw.replace("\n", ",").split(",")
+    free_pool = [k.strip() for k in free_raw if len(k.strip()) > 10]
+    single_key = (keys_config.get("apiKey") or GEMINI_SERVER_KEY or "").strip()
+    if single_key and single_key not in free_pool and single_key not in paid_pool:
+        free_pool.append(single_key)
+
+    tried_paid = False
+
+    # 1. Tenta Pool Pago
+    if paid_pool:
+        tried_paid = True
+        for pk in paid_pool:
+            try:
+                res = call_gemini_api(message, pk)
+                if res and ("sql_final" in res or "sql" in res):
+                    res["usage"] = res.get("usage", {})
+                    res["usage"]["tier"] = "paid"
+                    res["usage"]["tier_name"] = "Chave Paga (Paid Tier)"
+                    res["usage"]["failover_occurred"] = False
+                    res["usage"]["source"] = "gemini-1.5-flash (Paid Tier)"
+                    return res
+            except Exception:
+                pass
+
+    # 2. Tenta Pool Gratuito (Fallback)
+    if free_pool:
+        for fk in free_pool:
+            try:
+                res = call_gemini_api(message, fk)
+                if res and ("sql_final" in res or "sql" in res):
+                    res["usage"] = res.get("usage", {})
+                    res["usage"]["tier"] = "free"
+                    res["usage"]["tier_name"] = "Chave Gratuita (Fallback Ativado)" if tried_paid else "Chave Gratuita (Free Tier)"
+                    res["usage"]["failover_occurred"] = tried_paid
+                    res["usage"]["source"] = "gemini-1.5-flash (Fallback Gratuito)" if tried_paid else "gemini-1.5-flash (Free Tier)"
+                    return res
+            except Exception:
+                pass
+
+    return None
+
 def generate_softshop_response(message):
     p = (message or "").lower()
     usage = {
@@ -1538,21 +1588,18 @@ class RequestHandler(BaseHTTPRequestHandler):
 
                 if active_system == "softshop":
                     res = generate_softshop_response(msg)
-                elif api_key:
-                    try:
-                        ai_res = call_gemini_api(msg, api_key)
-                        if ai_res and ("sql_final" in ai_res or "sql" in ai_res):
-                            res = ai_res
-                        else:
-                            res = generate_structure_response(msg)
-                            res["usage"] = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "source": "fallback_rag", "status": "fallback_active"}
-                    except Exception as ai_err:
-                        is_quota = "429" in str(ai_err) or "RESOURCE_EXHAUSTED" in str(ai_err)
-                        res = generate_structure_response(msg)
-                        res["usage"] = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "source": "fallback_rag", "status": "fallback_active", "quota_exhausted": is_quota}
                 else:
-                    res = generate_structure_response(msg)
-                    res["usage"] = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "source": "fallback_rag", "status": "fallback_active"}
+                    keys_config = {
+                        "paidKeys": data.get("paidKeys") or [],
+                        "freeKeys": data.get("freeKeys") or [],
+                        "apiKey": api_key
+                    }
+                    ai_res = call_gemini_with_failover(msg, keys_config, active_system)
+                    if ai_res and ("sql_final" in ai_res or "sql" in ai_res):
+                        res = ai_res
+                    else:
+                        res = generate_structure_response(msg)
+                        res["usage"] = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "source": "fallback_rag", "status": "fallback_active"}
             except Exception:
                 res = {"error": "Não foi possível processar a consulta."}
             
