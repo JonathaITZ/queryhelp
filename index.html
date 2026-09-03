@@ -770,28 +770,21 @@
                         <span class="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-mono">DESKTOP</span>
                     </div>
                     <p class="text-xs text-slate-400 max-w-md mx-auto leading-relaxed mb-6">
-                        Ambiente preparado para a base do sistema Desktop. Assim que você me passar os dados de acesso ou o script de tabelas, mapearei 100% dos campos e relacionamentos.
+                        Base oficial <strong>BaseLavanderiaPandaNovo</strong> conectada (SQL Server 2019) com <strong>642 tabelas e 14.234 campos</strong> mapeados. Consultas T-SQL com colchetes e validações prévias ativas.
                     </p>
 
-                    <div class="bg-cyan-950/20 border border-cyan-500/30 rounded-xl p-4 max-w-lg mx-auto text-left mb-6">
-                        <div class="flex items-center gap-2 text-cyan-300 font-semibold text-xs mb-1">
-                            <i class="fa-solid fa-plug-circle-bolt"></i>
-                            <span>Aguardando Dados de Acesso ao Banco</span>
-                        </div>
-                        <p class="text-[11px] text-slate-300 leading-relaxed">
-                            Você pode me informar o SGBD (ex: Firebird, MySQL, SQL Server ou PostgreSQL), Host/Porta e credenciais, ou colar scripts DDL de tabelas aqui no chat.
-                        </p>
-                    </div>
-
                     <div class="flex flex-wrap justify-center gap-2 max-w-lg mx-auto">
-                        <button onclick="sendQuickPrompt('Como configuro o acesso ao banco do Softshop Desktop?')" class="text-xs text-slate-300 hover:text-white bg-cardBg hover:bg-white/5 border border-borderBase px-3 py-1.5 rounded-lg transition">
-                            Como configurar o banco Desktop?
+                        <button onclick="sendQuickPrompt('Como cancelar uma venda com seguranca no Softshop?')" class="text-xs text-slate-300 hover:text-white bg-cardBg hover:bg-white/5 border border-borderBase px-3 py-1.5 rounded-lg transition">
+                            Cancelar venda (com validação)
                         </button>
-                        <button onclick="sendQuickPrompt('Qual o banco de dados do Softshop Desktop (Firebird, MySQL, etc)?')" class="text-xs text-slate-300 hover:text-white bg-cardBg hover:bg-white/5 border border-borderBase px-3 py-1.5 rounded-lg transition">
-                            Qual o tipo de banco (SGBD)?
+                        <button onclick="sendQuickPrompt('Listar ultimas vendas com cliente e total')" class="text-xs text-slate-300 hover:text-white bg-cardBg hover:bg-white/5 border border-borderBase px-3 py-1.5 rounded-lg transition">
+                            Últimas vendas
                         </button>
-                        <button onclick="sendQuickPrompt('Enviar estrutura DDL de tabelas do Softshop Desktop')" class="text-xs text-slate-300 hover:text-white bg-cardBg hover:bg-white/5 border border-borderBase px-3 py-1.5 rounded-lg transition">
-                            Enviar script de tabelas
+                        <button onclick="sendQuickPrompt('Mercadorias com estoque baixo ou zerado')" class="text-xs text-slate-300 hover:text-white bg-cardBg hover:bg-white/5 border border-borderBase px-3 py-1.5 rounded-lg transition">
+                            Estoque de mercadorias
+                        </button>
+                        <button onclick="sendQuickPrompt('Contas a receber vencidas e inadimplencia')" class="text-xs text-slate-300 hover:text-white bg-cardBg hover:bg-white/5 border border-borderBase px-3 py-1.5 rounded-lg transition">
+                            Contas a receber
                         </button>
                     </div>
                 `;
