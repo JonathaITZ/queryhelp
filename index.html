@@ -194,6 +194,13 @@
                         </span>
                     </button>
 
+                    <!-- BOTÃO VER FEEDBACKS DESKTOP -->
+                    <button onclick="openFeedbackListModal()" class="text-xs text-slate-300 hover:text-white px-2.5 py-1.5 rounded-lg bg-cardBg hover:bg-white/5 border border-borderBase transition flex items-center gap-1.5" title="Ver Feedbacks e Relatórios de Erro Salvos">
+                        <i class="fa-solid fa-flag text-amber-400 text-[10px]"></i>
+                        <span class="hidden lg:inline font-medium">Feedbacks</span>
+                        <span id="header-feedback-badge" class="px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-mono">0</span>
+                    </button>
+
                     <!-- BOTÃO API KEY DESKTOP -->
                     <button onclick="openApiKeyModal()" class="text-xs text-slate-300 hover:text-white px-2.5 py-1.5 rounded-lg bg-cardBg hover:bg-white/5 border border-borderBase transition flex items-center gap-1.5" title="Chave de API Gemini">
                         <i class="fa-solid fa-key text-slate-400 text-[10px]"></i>
@@ -421,6 +428,126 @@
             </div>
         </div>
     </div>
+
+    
+    <!-- MODAL 1: REPORTAR ERRO NA CONSULTA GERADA -->
+    <div id="report-error-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 hidden z-50">
+        <div class="bg-cardBg border border-borderBase rounded-2xl p-4 sm:p-6 max-w-lg w-full shadow-2xl relative custom-scroll max-h-[92vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-3 border-b border-borderBase/60 pb-3">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400 shrink-0">
+                        <i class="fa-solid fa-triangle-exclamation text-xs"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-white tracking-tight">Reportar Incoerência na Consulta</h3>
+                        <span class="text-[10px] text-slate-400">Salva no banco de dados para melhorias da equipe</span>
+                    </div>
+                </div>
+                <button onclick="closeReportErrorModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition">
+                    <i class="fa-solid fa-xmark text-xs"></i>
+                </button>
+            </div>
+
+            <form id="report-error-form" onsubmit="submitFeedbackReport(event)" class="space-y-3.5">
+                <!-- Info da Consulta -->
+                <div class="p-2.5 rounded-xl bg-bgApp border border-borderBase text-[11px] space-y-1.5">
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-500 font-medium">Módulo:</span>
+                        <span id="report-sys-badge" class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-amber-300">Softcomshop</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-500 font-medium">Pergunta do Usuário:</span>
+                        <p id="report-prompt-text" class="text-slate-300 mt-0.5 font-normal italic line-clamp-2">Carregando...</p>
+                    </div>
+                    <div>
+                        <span class="text-slate-500 font-medium">SQL Gerado:</span>
+                        <pre id="report-sql-text" class="text-amber-300/90 font-mono text-[10px] bg-[#090b10] p-1.5 rounded mt-0.5 max-h-20 overflow-y-auto custom-scroll">Carregando...</pre>
+                    </div>
+                </div>
+
+                <!-- Categoria do Erro -->
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-300 uppercase tracking-wider mb-1">Qual o tipo de erro?</label>
+                    <select id="report-error-category" class="w-full bg-bgApp border border-borderBase focus:border-amber-500 rounded-xl px-3 py-2 text-xs text-white focus:outline-none">
+                        <option value="Tabela Incorreta">Tabela Incorreta (usou tabela errada)</option>
+                        <option value="Campo Inexistente ou Incorreto">Campo / Coluna Inexistente ou Incorreto</option>
+                        <option value="Regra de Negócio (Soft Delete, Empresa, Status)">Regra de Negócio (Soft Delete, Multi-Empresa, Status)</option>
+                        <option value="Erro de Sintaxe SQL / T-SQL">Erro de Sintaxe SQL / T-SQL</option>
+                        <option value="Sugestão / Outro">Sugestão de Melhoria / Outro</option>
+                    </select>
+                </div>
+
+                <!-- Detalhes do Erro -->
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-300 uppercase tracking-wider mb-1">O que está errado e como deveria ser?</label>
+                    <textarea 
+                        id="report-error-notes" 
+                        rows="3" 
+                        placeholder="Ex: 'Para faturamento do Softshop você deve usar [Cadastro de Vendas] e filtrar [Cancelada] = 0. A tabela usada não continha o total real...'"
+                        class="w-full bg-bgApp border border-borderBase focus:border-amber-500 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none resize-none"
+                        required
+                    ></textarea>
+                </div>
+
+                <!-- Feedback Visual de Sucesso/Erro -->
+                <div id="report-form-status" class="hidden text-xs p-2.5 rounded-xl text-center font-medium"></div>
+
+                <div class="flex justify-end gap-2 pt-2 border-t border-borderBase/60">
+                    <button type="button" onclick="closeReportErrorModal()" class="px-3.5 py-1.5 rounded-xl text-xs text-slate-400 hover:text-white transition">Cancelar</button>
+                    <button type="submit" id="btn-submit-report" class="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 transition shadow-lg shadow-amber-500/10 flex items-center gap-1.5">
+                        <i class="fa-solid fa-paper-plane text-[11px]"></i>
+                        <span>Salvar Feedback no Banco</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 2: ABA / LISTA DE FEEDBACKS SALVOS (PARA VER DEPOIS) -->
+    <div id="feedback-list-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 hidden z-50">
+        <div class="bg-cardBg border border-borderBase rounded-2xl p-4 sm:p-6 max-w-2xl w-full shadow-2xl relative custom-scroll max-h-[92vh] flex flex-col">
+            <div class="flex items-center justify-between mb-3 border-b border-borderBase/60 pb-3 shrink-0">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+                        <i class="fa-solid fa-clipboard-list text-xs"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-white tracking-tight">Feedbacks e Relatórios de Erro Salvos</h3>
+                        <span class="text-[10px] text-slate-400">Gravados no Banco de Dados para Auditoria da Equipe</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="fetchFeedbacksList()" class="text-slate-400 hover:text-amber-400 p-1.5 rounded-lg hover:bg-white/5 transition" title="Atualizar Lista">
+                        <i class="fa-solid fa-rotate text-xs"></i>
+                    </button>
+                    <button onclick="closeFeedbackListModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition">
+                        <i class="fa-solid fa-xmark text-xs"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filtros de Sistema -->
+            <div class="flex items-center gap-1.5 mb-3 shrink-0 text-xs">
+                <button onclick="filterFeedbacks('all')" id="btn-fb-all" class="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30">Todos (<span id="fb-count-all">0</span>)</button>
+                <button onclick="filterFeedbacks('softcomshop')" id="btn-fb-softcom" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-slate-200 border border-transparent">Softcomshop Web</button>
+                <button onclick="filterFeedbacks('softshop')" id="btn-fb-soft" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-slate-200 border border-transparent">Softshop Desktop</button>
+            </div>
+
+            <!-- Lista de Feedbacks com Scroll -->
+            <div id="feedbacks-container" class="flex-1 overflow-y-auto space-y-3 custom-scroll pr-1 py-1">
+                <div class="text-center py-10 text-slate-500 text-xs">
+                    <i class="fa-solid fa-spinner fa-spin text-amber-400 mb-2 text-base"></i>
+                    <p>Carregando feedbacks salvos no banco...</p>
+                </div>
+            </div>
+
+            <div class="mt-3 pt-3 border-t border-borderBase/60 flex items-center justify-between text-[11px] text-slate-500 shrink-0">
+                <span>Registrado no Banco de Dados</span>
+                <button onclick="closeFeedbackListModal()" class="px-3.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-medium transition">Fechar</button>
+            </div>
+        </div>
+    </div>
+
 
     <!-- Modal de API Key -->
     <div id="api-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden z-50">
@@ -976,6 +1103,7 @@
             const welcomeCard = document.getElementById('welcome-card');
             if (welcomeCard) welcomeCard.remove();
 
+            lastSentQueryText = queryText;
             appendUserMessage(queryText);
             input.value = '';
 
@@ -1022,6 +1150,217 @@
                 removeLoadingMessage(loadingId);
                 appendErrorMessage('Não foi possível gerar a resposta: ' + err.message);
             }
+        }
+
+                let lastSentQueryText = '';
+
+        // ====================================================================
+        // GESTÃO DE FEEDBACKS E REPORT DE ERROS (GRAVAÇÃO NO BANCO DE DADOS)
+        // ====================================================================
+        let lastReportContext = { prompt: '', sql: '', system: 'softcomshop' };
+        let allFeedbacksCache = [];
+        let currentFeedbackFilter = 'all';
+
+        function triggerReportCurrentBotMessage(tab1Id, code1Id, code2Id) {
+            const isCode2Visible = !document.getElementById(code2Id).classList.contains('hidden');
+            const targetCodeId = isCode2Visible ? code2Id : code1Id;
+            const codeEl = document.querySelector('#' + targetCodeId + ' code');
+            const sql = codeEl ? codeEl.innerText : '';
+            openReportModalWithData(lastSentQueryText || 'Consulta recente', sql, currentSystem);
+        }
+
+        function triggerReportSingleBotMessage(codeId) {
+            const codeEl = document.querySelector('#' + codeId + ' code');
+            const sql = codeEl ? codeEl.innerText : '';
+            openReportModalWithData(lastSentQueryText || 'Consulta recente', sql, currentSystem);
+        }
+
+        function openReportModalWithData(prompt, sql, system) {
+            lastReportContext = { prompt, sql, system };
+            document.getElementById('report-sys-badge').innerText = (system === 'softshop') ? 'Softshop Desktop (SQL Server)' : 'Softcomshop Web (MySQL)';
+            document.getElementById('report-sys-badge').className = (system === 'softshop') 
+                ? 'font-mono text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/30 text-cyan-300'
+                : 'font-mono text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-300';
+            document.getElementById('report-prompt-text').innerText = prompt || 'Consulta do usuário';
+            document.getElementById('report-sql-text').innerText = sql || '-- Nenhum SQL extraído';
+            document.getElementById('report-error-notes').value = '';
+            
+            const statusDiv = document.getElementById('report-form-status');
+            statusDiv.className = 'hidden text-xs p-2.5 rounded-xl text-center font-medium';
+            statusDiv.innerText = '';
+            
+            document.getElementById('report-error-modal').classList.remove('hidden');
+        }
+
+        function closeReportErrorModal() {
+            document.getElementById('report-error-modal').classList.add('hidden');
+        }
+
+        async function submitFeedbackReport(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btn-submit-report');
+            const statusDiv = document.getElementById('report-form-status');
+            const category = document.getElementById('report-error-category').value;
+            const notes = document.getElementById('report-error-notes').value.trim();
+
+            if (!notes) {
+                statusDiv.className = 'text-xs p-2.5 rounded-xl text-center font-medium bg-red-950/40 text-red-300 border border-red-500/30 block';
+                statusDiv.innerText = 'Por favor, informe a descrição do erro.';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs"></i> Gravando no banco...';
+
+            try {
+                const resp = await fetch('/api/feedback', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${sessionToken}`
+                    },
+                    body: JSON.stringify({
+                        system: lastReportContext.system,
+                        user_prompt: lastReportContext.prompt,
+                        generated_sql: lastReportContext.sql,
+                        error_type: category,
+                        feedback_notes: notes
+                    })
+                });
+
+                if (!resp.ok) {
+                    throw new Error('Erro ao salvar feedback na API.');
+                }
+
+                statusDiv.className = 'text-xs p-2.5 rounded-xl text-center font-medium bg-emerald-950/40 text-emerald-300 border border-emerald-500/30 block';
+                statusDiv.innerHTML = '<i class="fa-solid fa-check mr-1"></i> Feedback gravado com sucesso no banco de dados!';
+                
+                // Atualiza contadores
+                fetchFeedbacksList();
+
+                setTimeout(() => {
+                    closeReportErrorModal();
+                }, 1500);
+            } catch (err) {
+                statusDiv.className = 'text-xs p-2.5 rounded-xl text-center font-medium bg-red-950/40 text-red-300 border border-red-500/30 block';
+                statusDiv.innerText = 'Erro ao enviar: ' + err.message;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-paper-plane text-[11px]"></i> <span>Salvar Feedback no Banco</span>';
+            }
+        }
+
+        // ====================================================================
+        // VISUALIZAÇÃO DOS FEEDBACKS SALVOS (PARA A GENTE VER DEPOIS)
+        // ====================================================================
+        function openFeedbackListModal() {
+            document.getElementById('feedback-list-modal').classList.remove('hidden');
+            fetchFeedbacksList();
+        }
+
+        function closeFeedbackListModal() {
+            document.getElementById('feedback-list-modal').classList.add('hidden');
+        }
+
+        async function fetchFeedbacksList() {
+            const container = document.getElementById('feedbacks-container');
+            try {
+                const resp = await fetch('/api/feedback');
+                if (!resp.ok) throw new Error('Falha ao obter lista');
+                const data = await resp.json();
+                allFeedbacksCache = data.feedbacks || [];
+                
+                // Atualizar badges
+                const badgeHeader = document.getElementById('header-feedback-badge');
+                if (badgeHeader) badgeHeader.innerText = allFeedbacksCache.length;
+                const countAll = document.getElementById('fb-count-all');
+                if (countAll) countAll.innerText = allFeedbacksCache.length;
+
+                renderFeedbacksUI();
+            } catch (err) {
+                if (container) {
+                    container.innerHTML = `
+                        <div class="p-4 bg-red-950/20 border border-red-500/20 rounded-xl text-red-400 text-xs text-center">
+                            Não foi possível carregar os feedbacks do banco: ${escapeHtml(err.message)}
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        function filterFeedbacks(sys) {
+            currentFeedbackFilter = sys;
+            const btnAll = document.getElementById('btn-fb-all');
+            const btnSoftcom = document.getElementById('btn-fb-softcom');
+            const btnSoft = document.getElementById('btn-fb-soft');
+
+            if (btnAll) btnAll.className = (sys === 'all') ? 'px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30' : 'px-2.5 py-1 rounded-lg text-slate-400 hover:text-slate-200 border border-transparent';
+            if (btnSoftcom) btnSoftcom.className = (sys === 'softcomshop') ? 'px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30' : 'px-2.5 py-1 rounded-lg text-slate-400 hover:text-slate-200 border border-transparent';
+            if (btnSoft) btnSoft.className = (sys === 'softshop') ? 'px-2.5 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 font-semibold border border-cyan-500/30' : 'px-2.5 py-1 rounded-lg text-slate-400 hover:text-slate-200 border border-transparent';
+
+            renderFeedbacksUI();
+        }
+
+        function renderFeedbacksUI() {
+            const container = document.getElementById('feedbacks-container');
+            if (!container) return;
+
+            const filtered = allFeedbacksCache.filter(fb => {
+                if (currentFeedbackFilter === 'all') return true;
+                return fb.system === currentFeedbackFilter;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12 text-slate-500 text-xs">
+                        <i class="fa-regular fa-circle-check text-2xl text-slate-600 mb-2"></i>
+                        <p class="font-medium text-slate-400">Nenhum feedback ou erro reportado nesta categoria.</p>
+                        <p class="text-[11px] text-slate-600 mt-0.5">Quando um usuário reportar erro em uma consulta gerada, ela aparecerá aqui.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = filtered.map(fb => {
+                const isSoftshop = fb.system === 'softshop';
+                const dateStr = fb.created_at ? new Date(fb.created_at).toLocaleString('pt-BR') : 'Recentemente';
+                return `
+                    <div class="p-3.5 rounded-xl border border-borderBase bg-[#090b10] hover:border-borderBase/80 transition space-y-2 text-xs">
+                        <div class="flex items-center justify-between gap-2 flex-wrap">
+                            <div class="flex items-center gap-1.5">
+                                <span class="px-2 py-0.5 rounded font-mono text-[10px] font-semibold ${isSoftshop ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30' : 'bg-amber-500/15 text-amber-300 border border-amber-500/30'}">
+                                    ${escapeHtml(fb.system_name || fb.system)}
+                                </span>
+                                <span class="px-2 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20 text-[10px] font-medium">
+                                    ${escapeHtml(fb.error_type || 'Incorreto')}
+                                </span>
+                            </div>
+                            <span class="text-slate-500 text-[10.5px] font-mono">${dateStr}</span>
+                        </div>
+
+                        <div>
+                            <span class="text-slate-500 text-[10.5px] uppercase font-semibold">Pergunta:</span>
+                            <p class="text-slate-200 mt-0.5 leading-relaxed font-normal">${escapeHtml(fb.user_prompt || '(Não informada)')}</p>
+                        </div>
+
+                        <div class="p-2.5 bg-red-950/15 border border-red-500/20 rounded-lg">
+                            <span class="text-red-400 text-[10.5px] font-semibold flex items-center gap-1">
+                                <i class="fa-solid fa-comment-dots text-[10px]"></i> O que o usuário informou estar errado:
+                            </span>
+                            <p class="text-red-200/90 mt-1 leading-relaxed text-[11.5px]">${escapeHtml(fb.feedback_notes)}</p>
+                        </div>
+
+                        ${fb.generated_sql ? `
+                        <details class="group">
+                            <summary class="text-[11px] text-slate-400 hover:text-amber-400 cursor-pointer font-mono select-none flex items-center gap-1">
+                                <i class="fa-solid fa-code text-[10px]"></i> Ver SQL que foi gerado
+                            </summary>
+                            <pre class="mt-1.5 p-2 bg-black/60 rounded-lg text-slate-300 font-mono text-[10px] overflow-x-auto custom-scroll border border-white/5"><code>${escapeHtml(fb.generated_sql)}</code></pre>
+                        </details>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
         }
 
         function appendUserMessage(text) {
@@ -1112,9 +1451,14 @@
                                     <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span> 2. Execução (${escapeHtml(opName)})
                                 </button>
                             </div>
-                            <button id="${btnCopyId}" onclick="copyActiveCode('${code1Id}', '${btnCopyId}')" class="text-[11px] text-slate-400 hover:text-white px-2 py-0.5 rounded hover:bg-white/5 transition flex items-center gap-1">
-                                <i class="fa-regular fa-copy text-[10px]"></i> Copiar
-                            </button>
+                            <div class="flex items-center gap-1">
+                                <button onclick="triggerReportCurrentBotMessage('${tab1Id}', '${code1Id}', '${code2Id}')" class="text-[11px] text-slate-400 hover:text-amber-400 px-2 py-0.5 rounded hover:bg-white/5 transition flex items-center gap-1" title="Reportar erro nesta consulta">
+                                    <i class="fa-regular fa-flag text-[10px]"></i> Reportar Erro
+                                </button>
+                                <button id="${btnCopyId}" onclick="copyActiveCode('${code1Id}', '${btnCopyId}')" class="text-[11px] text-slate-400 hover:text-white px-2 py-0.5 rounded hover:bg-white/5 transition flex items-center gap-1">
+                                    <i class="fa-regular fa-copy text-[10px]"></i> Copiar
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Código da Aba 1 (SELECT de Validação) -->
@@ -1142,9 +1486,14 @@
                     <div class="rounded-xl border border-borderBase bg-[#090b10] overflow-hidden">
                         <div class="flex items-center justify-between border-b border-borderBase px-3.5 py-2 bg-cardBg/60 text-[11px] text-slate-400">
                             <span class="font-mono text-slate-400">${currentSystem === "softshop" ? "sql-server (t-sql)" : "mysql"}</span>
-                            <button id="${btnId}" onclick="copySqlClean('${codeId}', '${btnId}')" class="text-slate-400 hover:text-white px-2 py-0.5 rounded hover:bg-white/5 transition flex items-center gap-1">
-                                <i class="fa-regular fa-copy text-[10px]"></i> Copiar
-                            </button>
+                            <div class="flex items-center gap-1">
+                                <button onclick="triggerReportSingleBotMessage('${codeId}')" class="text-slate-400 hover:text-amber-400 px-2 py-0.5 rounded hover:bg-white/5 transition flex items-center gap-1" title="Reportar erro nesta consulta">
+                                    <i class="fa-regular fa-flag text-[10px]"></i> Reportar Erro
+                                </button>
+                                <button id="${btnId}" onclick="copySqlClean('${codeId}', '${btnId}')" class="text-slate-400 hover:text-white px-2 py-0.5 rounded hover:bg-white/5 transition flex items-center gap-1">
+                                    <i class="fa-regular fa-copy text-[10px]"></i> Copiar
+                                </button>
+                            </div>
                         </div>
                         <pre class="p-3.5 text-slate-200 overflow-x-auto custom-scroll" id="${codeId}"><code>${escapeHtml(sqlText)}</code></pre>
                     </div>
