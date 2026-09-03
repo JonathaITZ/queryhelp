@@ -641,16 +641,6 @@ module.exports = async function handler(req, res) {
       const softshopFallback = generateSoftshopFallback(message, geminiQuotaExhausted);
       return res.status(200).json(sanitizeData(softshopFallback));
     }
-      if (geminiRes) {
-        if (geminiRes._error) {
-          if (geminiRes.quota_exhausted) {
-            geminiQuotaExhausted = true;
-          }
-        } else if (geminiRes.sql_final || geminiRes.sql) {
-          return res.status(200).json(sanitizeData(geminiRes));
-        }
-      }
-    }
 
     // ====================================================================
     // 5. MOTOR DETERMINÍSTICO DE FALLBACK AUDITADO (SCHEMA RAG)
