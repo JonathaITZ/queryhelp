@@ -414,10 +414,30 @@ module.exports = async function handler(req, res) {
     const rawMessage = typeof body.message === "string" ? body.message : "";
     const message = rawMessage.slice(0, 1500).trim();
     const activeKey = body.apiKey || process.env.GEMINI_API_KEY;
+    const activeSystem = body.system === "softshop" ? "softshop" : "softcomshop";
+
+    // Roteamento para o Módulo Softshop Desktop
+    if (activeSystem === "softshop") {
+      return res.status(200).json(sanitizeData({
+        tipo_operacao: "SELECT",
+        tabelas_utilizadas: ["softshop_desktop"],
+        explicacao: "Módulo Softshop Desktop selecionado. O sistema está pronto e aguardando você fornecer os dados de acesso ao banco desktop (SGBD como Firebird, MySQL, SQL Server, PostgreSQL, Host, Porta e Credenciais) ou os scripts DDL das tabelas. Assim que você me passar o acesso, mapearei 100% das tabelas, campos e relacionamentos para gerar queries nativas e precisas!",
+        sql_validacao: "",
+        sql_final: `-- Módulo Softshop (Desktop) aguardando acesso
+-- Por favor, envie os dados de conexão ou o script DDL das tabelas para mapeamento completo de colunas e relacionamentos.`,
+        usage: {
+          prompt_tokens: 0,
+          completion_tokens: 0,
+          total_tokens: 0,
+          source: "softshop_desktop",
+          status: "waiting_schema"
+        }
+      }));
+    }
 
     let geminiQuotaExhausted = false;
 
-    // Se houver chave do Gemini, tenta executar via IA
+    // Se houver chave do Gemini, tenta executar via IA (Softcomshop)
     if (activeKey) {
       const geminiRes = await callGeminiStructured(message, activeKey);
       if (geminiRes) {
