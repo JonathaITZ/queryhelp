@@ -1,6 +1,6 @@
 // Vercel Serverless Function: /api/ask.js
 // Desenvolvido por Jonatha Dantas (by Dantas)
-// Arquitetura: Schema RAG (Context Pruning), Structured Outputs (JSON Schema Mode) e Fallbacks Auditados
+// Arquitetura: Schema RAG, Structured Outputs, Monitor de Tokens e Gestão de Quotas da IA
 
 const https = require('https');
 const crypto = require('crypto');
@@ -139,14 +139,12 @@ function retrieveRelevantSchema(query) {
     }
   }
 
-  // Ordena pelos maiores acertos e seleciona até os 2 domínios mais relevantes
   matched.sort((a, b) => b.score - a.score);
   
   if (matched.length > 0) {
     return matched.slice(0, 2).map(m => m.tables).join("\n");
   }
 
-  // Fallback padrão: tabelas vitais de Vendas e Produtos
   return SCHEMA_DOMAINS.vendas.tables + "\n" + SCHEMA_DOMAINS.produtos.tables;
 }
 
@@ -187,7 +185,7 @@ function checkRateLimit(ip) {
 }
 
 // ====================================================================
-// 3. STRUCTURED OUTPUTS: Chamada Gemini com JSON Schema Mode
+// 3. STRUCTURED OUTPUTS & MONITOR DE TOKENS: Chamada Gemini
 // ====================================================================
 function callGeminiStructured(message, apiKey) {
   return new Promise((resolve) => {
@@ -247,9 +245,33 @@ ${relevantSchema}
         res.on("end", () => {
           try {
             const data = JSON.parse(body);
+
+            // Se a API retornou erro de quota ou autorização
+            if (data.error) {
+              const isQuota = data.error.code === 429 || (data.error.status && data.error.status.includes("RESOURCE_EXHAUSTED"));
+              return resolve({
+                _error: true,
+                quota_exhausted: isQuota,
+                error_message: data.error.message || "Erro retornado pela API Gemini",
+                status_code: data.error.code || res.statusCode
+              });
+            }
+
             if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0]) {
               const textOutput = data.candidates[0].content.parts[0].text;
               const parsed = JSON.parse(textOutput);
+
+              // Extração precisa do consumo de tokens retornado pelo Gemini
+              const usageMeta = data.usageMetadata || {};
+              parsed.usage = {
+                prompt_tokens: usageMeta.promptTokenCount || 250,
+                completion_tokens: usageMeta.candidatesTokenCount || 90,
+                total_tokens: usageMeta.totalTokenCount || 340,
+                source: "gemini-1.5-flash",
+                status: "success",
+                quota_exhausted: false
+              };
+
               resolve(parsed);
             } else {
               resolve(null);
@@ -266,6 +288,66 @@ ${relevantSchema}
       req.end();
     } catch (e) {
       resolve(null);
+    }
+  });
+}
+
+// Verificador rápido de Quota (Ping leve de 1 token)
+function checkGeminiQuota(apiKey) {
+  return new Promise((resolve) => {
+    try {
+      const postData = JSON.stringify({
+        contents: [{ parts: [{ text: "ping" }] }],
+        generationConfig: { maxOutputTokens: 1 }
+      });
+
+      const options = {
+        hostname: "generativelanguage.googleapis.com",
+        path: "/v1beta/models/gemini-1.5-flash:generateContent?key=" + encodeURIComponent(apiKey),
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(postData)
+        },
+        timeout: 6000
+      };
+
+      const req = https.request(options, (res) => {
+        let body = "";
+        res.on("data", (d) => { body += d; });
+        res.on("end", () => {
+          try {
+            const data = JSON.parse(body);
+            if (data.error) {
+              const isQuota = data.error.code === 429 || (data.error.status && data.error.status.includes("RESOURCE_EXHAUSTED"));
+              return resolve({
+                available: false,
+                quota_exhausted: isQuota,
+                code: data.error.code,
+                message: data.error.message || "Erro na API"
+              });
+            }
+            if (data.candidates) {
+              return resolve({
+                available: true,
+                quota_exhausted: false,
+                message: "IA Operacional e Cota Disponível!",
+                model: "gemini-1.5-flash"
+              });
+            }
+            resolve({ available: false, quota_exhausted: false, message: "Resposta inesperada." });
+          } catch (e) {
+            resolve({ available: false, quota_exhausted: false, message: "Falha ao processar resposta." });
+          }
+        });
+      });
+
+      req.on("error", (e) => { resolve({ available: false, quota_exhausted: false, message: e.message }); });
+      req.on("timeout", () => { req.destroy(); resolve({ available: false, quota_exhausted: false, message: "Timeout" }); });
+      req.write(postData);
+      req.end();
+    } catch (e) {
+      resolve({ available: false, quota_exhausted: false, message: e.message });
     }
   });
 }
@@ -311,26 +393,61 @@ module.exports = async function handler(req, res) {
       body = {};
     }
 
+    // Endpoint específico para Teste de Conexão e Quota
+    if (body.action === "check_quota") {
+      const testKey = body.apiKey || process.env.GEMINI_API_KEY;
+      if (!testKey) {
+        return res.status(200).json({
+          available: false,
+          quota_exhausted: false,
+          has_key: false,
+          message: "Nenhuma chave de API configurada. O sistema está operando no modo Fallback Schema RAG (Ilimitado e Gratuito)."
+        });
+      }
+      const quotaCheck = await checkGeminiQuota(testKey);
+      return res.status(200).json({
+        ...quotaCheck,
+        has_key: true
+      });
+    }
+
     const rawMessage = typeof body.message === "string" ? body.message : "";
     const message = rawMessage.slice(0, 1500).trim();
     const activeKey = body.apiKey || process.env.GEMINI_API_KEY;
 
-    // Se houver chave do Gemini, executa via Structured Outputs
+    let geminiQuotaExhausted = false;
+
+    // Se houver chave do Gemini, tenta executar via IA
     if (activeKey) {
       const geminiRes = await callGeminiStructured(message, activeKey);
-      if (geminiRes && (geminiRes.sql_final || geminiRes.sql)) {
-        return res.status(200).json(sanitizeData(geminiRes));
+      if (geminiRes) {
+        if (geminiRes._error) {
+          if (geminiRes.quota_exhausted) {
+            geminiQuotaExhausted = true;
+          }
+        } else if (geminiRes.sql_final || geminiRes.sql) {
+          return res.status(200).json(sanitizeData(geminiRes));
+        }
       }
     }
 
     // ====================================================================
-    // 5. MOTOR DETERMINÍSTICO DE FALLBACK AUDITADO
+    // 5. MOTOR DETERMINÍSTICO DE FALLBACK AUDITADO (SCHEMA RAG)
     // ====================================================================
     const p = message.toLowerCase();
     const isDelete = p.includes("delete") || p.includes("deletar") || p.includes("excluir") || p.includes("apagar") || p.includes("cancelar") || p.includes("remover");
     const isUpdate = p.includes("update") || p.includes("alterar") || p.includes("atualizar") || p.includes("mudar") || p.includes("modificar") || p.includes("ajust");
 
-    // FALLBACK ESPECÍFICO 1: DELETAR VENDAS COM VALIDAÇÃO FISCAL E FINANCEIRA
+    const fallbackUsage = {
+      prompt_tokens: 0,
+      completion_tokens: 0,
+      total_tokens: 0,
+      source: "fallback_rag",
+      status: "fallback_active",
+      quota_exhausted: geminiQuotaExhausted
+    };
+
+    // FALLBACK 1: DELETAR VENDAS COM VALIDAÇÃO FISCAL E FINANCEIRA
     if (isDelete && (p.includes("venda") || p.includes("pedido") || p.includes("seguran"))) {
       return res.status(200).json(sanitizeData({
         tipo_operacao: "DELETE",
@@ -381,11 +498,12 @@ WHERE id = :id -- Substitua :id pelo ID da venda
 COMMIT;
 
 -- Caso queira reverter:
--- ROLLBACK;`
+-- ROLLBACK;`,
+        usage: fallbackUsage
       }));
     }
 
-    // FALLBACK 2: ALTERAR PREÇO OU ESTOQUE (PRODUTO_EMPRESA_GRADE)
+    // FALLBACK 2: ALTERAR PREÇO OU ESTOQUE
     if (isUpdate && (p.includes("produt") || p.includes("preco") || p.includes("estoqu") || p.includes("grade") || p.includes("valor"))) {
       return res.status(200).json(sanitizeData({
         tipo_operacao: "UPDATE",
@@ -420,7 +538,8 @@ WHERE pe.produto_id = 10
   AND pe.empresa_id = 1
   AND peg.deleted_at IS NULL;
 
-COMMIT;`
+COMMIT;`,
+        usage: fallbackUsage
       }));
     }
 
@@ -445,7 +564,8 @@ WHERE v.deleted_at IS NULL
   AND v.empresa_id = 1
   AND v.status = 'FINALIZADA'
 GROUP BY fp.id, fp.nome
-ORDER BY total_faturado DESC;`
+ORDER BY total_faturado DESC;`,
+        usage: fallbackUsage
       }));
     }
 
@@ -472,7 +592,8 @@ INNER JOIN nota_fiscal_eletronica nfe ON v.nfe_id = nfe.id
 LEFT JOIN financeiro_parcela fp ON fp.venda_id = v.id AND fp.deleted_at IS NULL
 WHERE nfe.recibo_situacao = 'CONTINGENCIA'
 GROUP BY v.id, v.valor_total, v.total_pagamento, nfe.id, nfe.numero_nfe, nfe.recibo_situacao, nfe.mensagem_erro
-ORDER BY v.id DESC;`
+ORDER BY v.id DESC;`,
+        usage: fallbackUsage
       }));
     }
 
@@ -494,7 +615,8 @@ FROM venda v
 WHERE v.deleted_at IS NULL 
   AND v.empresa_id = 1
 ORDER BY v.id DESC
-LIMIT 10;`
+LIMIT 10;`,
+      usage: fallbackUsage
     }));
 
   } catch (fatalErr) {
@@ -503,14 +625,15 @@ LIMIT 10;`
       tabelas_utilizadas: ["venda"],
       explicacao: "Consulta de contingência executada com segurança pelo QueryHelp.",
       sql_validacao: "",
-      sql_final: "SELECT v.id, v.api_data_hora_venda, v.status, v.valor_total FROM venda v WHERE v.deleted_at IS NULL AND v.empresa_id = 1 ORDER BY v.id DESC LIMIT 10;"
+      sql_final: "SELECT v.id, v.api_data_hora_venda, v.status, v.valor_total FROM venda v WHERE v.deleted_at IS NULL AND v.empresa_id = 1 ORDER BY v.id DESC LIMIT 10;",
+      usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0, source: "fatal_fallback" }
     });
   }
 };
 
 function sanitizeData(obj) {
   if (!obj || typeof obj !== "object") return { error: "Erro de processamento" };
-  const allowed = ["tipo_operacao", "sql_validacao", "sql_final", "sql", "tabelas_utilizadas", "explicacao", "message"];
+  const allowed = ["tipo_operacao", "sql_validacao", "sql_final", "sql", "tabelas_utilizadas", "explicacao", "message", "usage"];
   const clean = {};
   
   const secretPatterns = [
@@ -524,7 +647,9 @@ function sanitizeData(obj) {
 
   for (const k of allowed) {
     if (obj[k] !== undefined) {
-      if (typeof obj[k] === "string") {
+      if (k === "usage" && typeof obj[k] === "object") {
+        clean.usage = obj.usage;
+      } else if (typeof obj[k] === "string") {
         let val = obj[k];
         for (const pat of secretPatterns) {
           val = val.replace(pat, "[PROTEGIDO]");
