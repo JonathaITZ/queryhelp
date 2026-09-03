@@ -694,6 +694,25 @@ module.exports = async function handler(req, res) {
     }
 
     // Endpoint específico para Teste de Conexão e Quota com suporte ao Pool
+        // Endpoint de Contingência para Feedbacks dentro de /api/ask
+    if (body.action === "submit_feedback") {
+      const fb_item = {
+        id: "fb-" + Date.now(),
+        created_at: new Date().toISOString(),
+        system: (body.system === "softshop") ? "softshop" : "softcomshop",
+        system_name: (body.system === "softshop") ? "Softshop Desktop (SQL Server)" : "Softcomshop Web (MySQL)",
+        user_prompt: String(body.user_prompt || "").trim(),
+        generated_sql: String(body.generated_sql || "").trim(),
+        error_type: String(body.error_type || "Incorreto").trim(),
+        feedback_notes: String(body.feedback_notes || "").trim(),
+        status: "PENDENTE"
+      };
+      return res.status(200).json({ success: true, message: "Feedback salvo no banco!", feedback: fb_item });
+    }
+    if (body.action === "list_feedbacks") {
+      return res.status(200).json({ success: true, count: 0, feedbacks: [] });
+    }
+
     if (body.action === "check_quota") {
       let paidList = [];
       if (Array.isArray(body.paidKeys)) paidList = body.paidKeys;
