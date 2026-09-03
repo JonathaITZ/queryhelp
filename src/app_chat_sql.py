@@ -1415,8 +1415,24 @@ class RequestHandler(BaseHTTPRequestHandler):
 
                 msg = str(data.get("message", ""))[:1500].strip()
                 api_key = data.get("apiKey") or GEMINI_SERVER_KEY
-                
-                if api_key:
+                active_system = data.get("system", "softcomshop")
+
+                if active_system == "softshop":
+                    res = {
+                        "tipo_operacao": "SELECT",
+                        "tabelas_utilizadas": ["softshop_desktop"],
+                        "explicacao": "Módulo Softshop Desktop selecionado. O sistema está pronto e aguardando você fornecer os dados de acesso ao banco desktop (SGBD como Firebird, MySQL, SQL Server, PostgreSQL, Host, Porta e Credenciais) ou os scripts DDL das tabelas. Assim que você me passar o acesso, mapearei 100% das tabelas, campos e relacionamentos para gerar queries nativas e precisas!",
+                        "sql_validacao": "",
+                        "sql_final": "-- Módulo Softshop (Desktop) aguardando acesso\n-- Por favor, envie os dados de conexão ou o script DDL das tabelas para mapeamento completo de colunas e relacionamentos.",
+                        "usage": {
+                            "prompt_tokens": 0,
+                            "completion_tokens": 0,
+                            "total_tokens": 0,
+                            "source": "softshop_desktop",
+                            "status": "waiting_schema"
+                        }
+                    }
+                elif api_key:
                     try:
                         ai_res = call_gemini_api(msg, api_key)
                         if ai_res and ("sql_final" in ai_res or "sql" in ai_res):
